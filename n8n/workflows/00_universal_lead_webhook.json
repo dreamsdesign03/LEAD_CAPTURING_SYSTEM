@@ -1,0 +1,172 @@
+{
+  "name": "00-Universal-Lead-Webhook",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "universal-lead",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "un-webhook",
+      "name": "Universal Lead Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-900, 0],
+      "webhookId": "universal-lead"
+    },
+    {
+      "parameters": {
+        "jsCode": "function deepGet(obj, keys) {\n  if (!obj || typeof obj !== 'object') return undefined;\n  for (const k of Object.keys(obj)) {\n    const kk = k.toLowerCase();\n    for (const target of keys) {\n      if (kk === target || kk.includes(target)) {\n        const v = obj[k];\n        if (v == null) continue;\n        if (Array.isArray(v)) return String(v[0] ?? '').trim();\n        if (typeof v === 'object') {\n          const inner = v.values?.[0] ?? v.value ?? v.text ?? v.label;\n          if (inner != null) return String(inner).trim();\n          continue;\n        }\n        if (typeof v === 'string' || typeof v === 'number') return String(v).trim();\n      }\n    }\n    if (obj[k] && typeof obj[k] === 'object') {\n      const r = deepGet(obj[k], keys);\n      if (r !== undefined) return r;\n    }\n  }\n  return undefined;\n}\n\nconst first = deepGet($json, ['first_name', 'fname']) || '';\nconst last = deepGet($json, ['last_name', 'lname']) || '';\nconst raw = JSON.stringify($json).toLowerCase();\nconst name = deepGet($json, ['full_name']) || `${first} ${last}`.trim() || deepGet($json, ['name', 'contact_name']) || 'Unknown';\nconst email = (deepGet($json, ['email', 'email_address', 'e-mail', 'mail']) || '').toLowerCase();\nconst phone = deepGet($json, ['phone', 'phone_number', 'mobile', 'whatsapp', 'telephone', 'contact_number', 'customer_phone']) || '';\n\nlet source = $json.source || 'manual';\nif (raw.includes('leadgen') || raw.includes('field_data')) source = 'meta';\nelse if (raw.includes('answers') && (raw.includes('fieldlabel') || raw.includes('field_key'))) source = 'linkedin';\nelse if (raw.includes('from') && raw.includes('whatsapp')) source = 'whatsapp';\n\nconst params = [];\nif (email) params.push(`email=eq.${encodeURIComponent(email)}`);\nif (phone) params.push(`phone=eq.${encodeURIComponent(phone)}`);\nconst filter = params.length === 1 ? params[0] : `or=(${params.join(',')})`;\nconst checkUrl = params.length\n  ? `${$env.SUPABASE_URL}/rest/v1/leads?${filter}&select=id`\n  : '';\n\nreturn [{ json: { name, email, phone, source, raw_data: $json, checkUrl } }];"
+      },
+      "id": "un-normalise",
+      "name": "Normalise Any Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-560, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "leftValue": "={{ $json.checkUrl }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEqual"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "un-hasid",
+      "name": "Has Email or Phone?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-220, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.checkUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "un-dup",
+      "name": "Check for Duplicate",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [120, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "leftValue": "={{ $json.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "un-isfound",
+      "name": "Duplicate?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/leads",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ name: $json.name, email: $json.email || null, phone: $json.phone || null, source: $json.source, raw_data: $json.raw_data }) }}",
+        "options": {}
+      },
+      "id": "un-insert",
+      "name": "Insert Lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [120, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "received",
+        "options": {}
+      },
+      "id": "un-ok",
+      "name": "Respond Received",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [460, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "duplicate",
+        "options": {}
+      },
+      "id": "un-duppe",
+      "name": "Respond Duplicate",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [800, 300]
+    }
+  ],
+  "connections": {
+    "Universal Lead Webhook": {
+      "main": [[{ "node": "Normalise Any Payload", "type": "main", "index": 0 }]]
+    },
+    "Normalise Any Payload": {
+      "main": [[{ "node": "Has Email or Phone?", "type": "main", "index": 0 }]]
+    },
+    "Has Email or Phone?": {
+      "main": [
+        [{ "node": "Check for Duplicate", "type": "main", "index": 0 }],
+        [{ "node": "Insert Lead", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check for Duplicate": {
+      "main": [[{ "node": "Duplicate?", "type": "main", "index": 0 }]]
+    },
+    "Duplicate?": {
+      "main": [
+        [{ "node": "Respond Duplicate", "type": "main", "index": 0 }],
+        [{ "node": "Insert Lead", "type": "main", "index": 0 }]
+      ]
+    },
+    "Insert Lead": {
+      "main": [[{ "node": "Respond Received", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": { "instanceId": "lead-capture" }
+}
