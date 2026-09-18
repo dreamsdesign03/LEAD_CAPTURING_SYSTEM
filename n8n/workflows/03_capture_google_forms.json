@@ -1,0 +1,68 @@
+{
+  "name": "03-Capture-Google-Forms",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute",
+              "value": 2
+            }
+          ]
+        },
+        "simple": true,
+        "options": {}
+      },
+      "id": "gf-trigger",
+      "name": "Google Forms Trigger",
+      "type": "n8n-nodes-base.googleFormsTrigger",
+      "typeVersion": 2,
+      "position": [-500, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const r = $json.response ?? $json;\nconst get = (f) => r[f] ?? Object.values(r).find((v) => typeof v === 'object' && v !== null && v[f] !== undefined)?.[f] ?? '';\nconst lead = {\n  name: get('name') || get('full_name') || 'Unknown',\n  email: get('email') || null,\n  phone: get('phone') || get('phone_number') || null,\n  source: 'google_form',\n  raw_data: $json\n};\nreturn [{ json: lead }];"
+      },
+      "id": "gf-map",
+      "name": "Map Form Fields",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-140, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/leads",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ name: $json.name, email: $json.email, phone: $json.phone, source: $json.source, raw_data: $json.raw_data }) }}",
+        "options": {}
+      },
+      "id": "gf-insert",
+      "name": "Insert Lead Into Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [240, 0]
+    }
+  ],
+  "connections": {
+    "Google Forms Trigger": {
+      "main": [[{ "node": "Map Form Fields", "type": "main", "index": 0 }]]
+    },
+    "Map Form Fields": {
+      "main": [[{ "node": "Insert Lead Into Supabase", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": { "instanceId": "lead-capture" }
+}

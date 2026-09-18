@@ -1,0 +1,95 @@
+{
+  "name": "02-Capture-LinkedIn-Leads",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "linkedin-leads",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "li-webhook",
+      "name": "LinkedIn Lead Gen Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-500, 0],
+      "webhookId": "linkedin-leads"
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $json;\nconst answers = payload.answers ?? payload.response?.answers ?? [];\nconst get = (field) => answers.find((a) => a.field === field || a.fieldId === field)?.value ?? '';\nconst lead = {\n  name: get('full_name') || `${get('first_name')} ${get('last_name')}`.trim() || payload.full_name || 'Unknown',\n  email: get('email') || payload.email || null,\n  phone: get('phone') || payload.phone || null,\n  source: 'linkedin',\n  raw_data: $json\n};\nreturn [{ json: lead }];"
+      },
+      "id": "li-map",
+      "name": "Map LinkedIn Fields",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-140, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/leads",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ name: $json.name, email: $json.email, phone: $json.phone, source: $json.source, raw_data: $json.raw_data }) }}",
+        "options": {}
+      },
+      "id": "li-insert",
+      "name": "Insert Lead Into Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [240, 0]
+    }
+  ],
+  "connections": {
+    "LinkedIn Lead Gen Webhook": {
+      "main": [
+        [
+          {
+            "node": "Map LinkedIn Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map LinkedIn Fields": {
+      "main": [
+        [
+          {
+            "node": "Insert Lead Into Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "instanceId": "lead-capture"
+  }
+}

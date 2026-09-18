@@ -1,0 +1,167 @@
+{
+  "name": "10-Outreach-AI-Call",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "outreach-ai-call",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "ac-webhook",
+      "name": "AI Call Outreach Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-700, 0],
+      "webhookId": "outreach-ai-call"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/leads?id=eq.{{ $json.lead_id }}&select=id,name,phone,email,raw_data",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ac-get",
+      "name": "Get Lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-360, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const webhook = $('AI Call Outreach Webhook').item.json;\nconst lead = $json[0] ?? $json;\nconst firstName = (lead.name || 'there').split(' ')[0];\nconst next_attempt = webhook.followup_attempt || 2;\nconst payload = {\n  number: lead.phone,\n  firstName,\n  assistantMessage: `Hi ${firstName}, this is an automated call from our sales team. We saw you were interested in our product. Press 1 to book a 15-minute call with a specialist, or press 2 to receive more details by email.`,\n  lead_id: lead.id,\n  name: lead.name,\n  email: lead.email,\n  next_attempt\n};\nreturn [{ json: payload }];"
+      },
+      "id": "ac-build",
+      "name": "Build Call Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-20, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.VAPI_URL ? $env.VAPI_URL : 'https://api.vapi.ai' }}/call",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.VAPI_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ phoneNumberId: $env.VAPI_PHONE_NUMBER_ID, customer: { number: $json.number }, assistant: { firstMessage: $json.assistantMessage, transcriber: { provider: 'deepgram' }, model: { provider: 'openai', model: $env.OPENAI_MODEL || 'gpt-4o-mini', messages: [{ role: 'system', content: 'You are a sales qualification agent. You booked a call for ' + $json.name + '. Collect: interest level, timeline, and email. Keep it brief and friendly.' }] }, voice: { provider: '11labs', voiceId: 'sarah' } }, metadata: { lead_id: $json.lead_id } }) }}",
+        "options": {}
+      },
+      "id": "ac-trigger",
+      "name": "Trigger Vapi Call",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [320, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/outreach_log",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ lead_id: $json.lead_id, channel: 'ai_call', status: 'sent', message_content: 'AI outbound call triggered to ' + $json.number, meta: $json }) }}",
+        "options": {}
+      },
+      "id": "ac-log",
+      "name": "Log AI Call",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "leftValue": "={{ $json.next_attempt }}",
+              "rightValue": 4,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ac-cap",
+      "name": "Another Follow-up?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1000, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/followups",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ lead_id: $json.lead_id, channel: 'ai_call', scheduled_at: new Date(Date.now() + ($json.next_attempt === 3 ? 7 : 1) * 24 * 60 * 60 * 1000).toISOString(), status: 'pending', attempt: $json.next_attempt }) }}",
+        "options": {}
+      },
+      "id": "ac-followup",
+      "name": "Schedule Follow-up Call",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 0]
+    }
+  ],
+  "connections": {
+    "AI Call Outreach Webhook": {
+      "main": [[{ "node": "Get Lead", "type": "main", "index": 0 }]]
+    },
+    "Get Lead": {
+      "main": [[{ "node": "Build Call Payload", "type": "main", "index": 0 }]]
+    },
+    "Build Call Payload": {
+      "main": [[{ "node": "Trigger Vapi Call", "type": "main", "index": 0 }]]
+    },
+    "Trigger Vapi Call": {
+      "main": [[{ "node": "Log AI Call", "type": "main", "index": 0 }]]
+    },
+    "Log AI Call": {
+      "main": [[{ "node": "Another Follow-up?", "type": "main", "index": 0 }]]
+    },
+    "Another Follow-up?": {
+      "main": [
+        [{ "node": "Schedule Follow-up Call", "type": "main", "index": 0 }],
+        []
+      ]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": { "instanceId": "lead-capture" }
+}

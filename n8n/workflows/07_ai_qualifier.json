@@ -1,0 +1,315 @@
+{
+  "name": "07-AI-Lead-Qualifier",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 2
+            }
+          ]
+        }
+      },
+      "id": "q-schedule",
+      "name": "Every 2 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-1100, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/leads?status=eq.new&select=id,name,email,phone,source,raw_data,created_at",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "q-get",
+      "name": "Get New Leads",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-760, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "leftValue": "={{ $('Get New Leads').all().length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "q-hasleads",
+      "name": "Any Leads?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-420, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.OPENAI_BASE_URL ? $env.OPENAI_BASE_URL : 'https://api.openai.com' }}/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.OPENAI_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: $env.OPENAI_MODEL || 'gpt-4o-mini', temperature: 0.2, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: 'You are a B2B sales qualification agent. Score the lead 0-100. Consider: budget signals, urgency/timing, decision-maker authority, and fit with the company\\'s product/service. Return ONLY JSON: {\"score\": number 0-100, \"breakdown\": {\"budget\": number, \"authority\": number, \"need\": number, \"timing\": number}, \"reasoning\": \"short explanation\", \"next_action\": \"call|whatsapp|email\"}' }, { role: 'user', content: 'Lead to score: ' + JSON.stringify($json) }] }) }}",
+        "options": {}
+      },
+      "id": "q-llm",
+      "name": "Score Lead with AI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-80, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const content = JSON.parse($json.choices[0].message.content);\nconst leadId = $('Get New Leads').item.json.id;\nreturn [{ json: { lead_id: leadId, ...content } }];"
+      },
+      "id": "q-parse",
+      "name": "Parse AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [260, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/lead_scores",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ lead_id: $json.lead_id, score: $json.score, breakdown: $json.breakdown, reasoning: $json.reasoning, qualified: $json.score >= ($env.QUALIFY_THRESHOLD || 70) }) }}",
+        "options": {}
+      },
+      "id": "q-save",
+      "name": "Save Score",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "leftValue": "={{ $json.score }}",
+              "rightValue": 70,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "q-router",
+      "name": "High or Low?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [940, 0]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/leads?id=eq.{{ $json.lead_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ status: 'cold' }) }}",
+        "options": {}
+      },
+      "id": "q-cold",
+      "name": "Move to Cold Leads",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1280, 300]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/leads?id=eq.{{ $json.lead_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ status: 'qualified' }) }}",
+        "options": {}
+      },
+      "id": "q-hot",
+      "name": "Mark Qualified",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1280, -300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_URL }}/webhook/outreach-email",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ lead_id: $json.lead_id, message_type: 'initial' }) }}",
+        "requestOptions": {
+          "timeout": 3000
+        },
+        "options": {}
+      },
+      "id": "q-email",
+      "name": "Trigger Email Outreach",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1620, -500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_URL }}/webhook/outreach-whatsapp",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ lead_id: $json.lead_id, message_type: 'initial' }) }}",
+        "requestOptions": {
+          "timeout": 3000
+        },
+        "options": {}
+      },
+      "id": "q-wa",
+      "name": "Trigger WhatsApp Outreach",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1620, -200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_URL }}/webhook/outreach-ai-call",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ lead_id: $json.lead_id, message_type: 'initial' }) }}",
+        "requestOptions": {
+          "timeout": 3000
+        },
+        "options": {}
+      },
+      "id": "q-call",
+      "name": "Trigger AI Call Outreach",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1620, 100]
+    }
+  ],
+  "connections": {
+    "Every 2 Minutes": {
+      "main": [[{ "node": "Get New Leads", "type": "main", "index": 0 }]]
+    },
+    "Get New Leads": {
+      "main": [[{ "node": "Any Leads?", "type": "main", "index": 0 }]]
+    },
+    "Any Leads?": {
+      "main": [
+        [],
+        [{ "node": "Score Lead with AI", "type": "main", "index": 0 }]
+      ]
+    },
+    "Score Lead with AI": {
+      "main": [[{ "node": "Parse AI Response", "type": "main", "index": 0 }]]
+    },
+    "Parse AI Response": {
+      "main": [[{ "node": "Save Score", "type": "main", "index": 0 }]]
+    },
+    "Save Score": {
+      "main": [[{ "node": "High or Low?", "type": "main", "index": 0 }]]
+    },
+    "High or Low?": {
+      "main": [
+        [
+          { "node": "Mark Qualified", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Move to Cold Leads", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Mark Qualified": {
+      "main": [
+        [
+          { "node": "Trigger Email Outreach", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Trigger Email Outreach": {
+      "main": [
+        [
+          { "node": "Trigger WhatsApp Outreach", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Trigger WhatsApp Outreach": {
+      "main": [
+        [
+          { "node": "Trigger AI Call Outreach", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": { "instanceId": "lead-capture" }
+}

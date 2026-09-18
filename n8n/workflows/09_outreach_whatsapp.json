@@ -1,0 +1,166 @@
+{
+  "name": "09-Outreach-WhatsApp",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "outreach-whatsapp",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "wao-webhook",
+      "name": "WhatsApp Outreach Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-700, 0],
+      "webhookId": "outreach-whatsapp"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/leads?id=eq.{{ $json.lead_id }}&select=id,name,phone,raw_data",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "wao-get",
+      "name": "Get Lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-360, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const webhook = $('WhatsApp Outreach Webhook').item.json;\nconst lead = $json[0] ?? $json;\nconst firstName = (lead.name || 'there').split(' ')[0];\nconst next_attempt = webhook.followup_attempt || 2;\nconst message = `Hi ${firstName}! Thanks for reaching out. Would you like a quick call to see how we can help? Just reply here and we will take it from there.`;\nreturn [{ json: { lead_id: lead.id, phone: lead.phone, message, next_attempt } }];"
+      },
+      "id": "wao-build",
+      "name": "Build Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-20, 0]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "recipientPhoneNumber": "={{ $json.phone }}",
+        "message": "={{ $json.message }}",
+        "messagingProduct": "whatsapp",
+        "options": {}
+      },
+      "id": "wao-send",
+      "name": "Send via WhatsApp",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 2,
+      "position": [320, 0],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "SET_UP_IN_UI",
+          "name": "WhatsApp Business Cloud"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/outreach_log",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ lead_id: $json.lead_id, channel: 'whatsapp', status: 'sent', message_content: $json.message }) }}",
+        "options": {}
+      },
+      "id": "wao-log",
+      "name": "Log Outbound WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "leftValue": "={{ $json.next_attempt }}",
+              "rightValue": 4,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "wao-cap",
+      "name": "Another Follow-up?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1000, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/followups",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ lead_id: $json.lead_id, channel: 'whatsapp', scheduled_at: new Date(Date.now() + ($json.next_attempt === 3 ? 7 : 2) * 24 * 60 * 60 * 1000).toISOString(), status: 'pending', attempt: $json.next_attempt }) }}",
+        "options": {}
+      },
+      "id": "wao-followup",
+      "name": "Schedule Follow-up",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 0]
+    }
+  ],
+  "connections": {
+    "WhatsApp Outreach Webhook": {
+      "main": [[{ "node": "Get Lead", "type": "main", "index": 0 }]]
+    },
+    "Get Lead": {
+      "main": [[{ "node": "Build Message", "type": "main", "index": 0 }]]
+    },
+    "Build Message": {
+      "main": [[{ "node": "Send via WhatsApp", "type": "main", "index": 0 }]]
+    },
+    "Send via WhatsApp": {
+      "main": [[{ "node": "Log Outbound WhatsApp", "type": "main", "index": 0 }]]
+    },
+    "Log Outbound WhatsApp": {
+      "main": [[{ "node": "Another Follow-up?", "type": "main", "index": 0 }]]
+    },
+    "Another Follow-up?": {
+      "main": [
+        [{ "node": "Schedule Follow-up", "type": "main", "index": 0 }],
+        []
+      ]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": { "instanceId": "lead-capture" }
+}
