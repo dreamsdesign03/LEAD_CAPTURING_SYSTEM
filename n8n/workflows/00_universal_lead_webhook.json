@@ -210,7 +210,96 @@
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput",
       "position": [920, -320]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.candidates }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              },
+              "id": "unq-scored-cond"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "unq-scored",
+      "name": "Primary Scored?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1260, -480]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-goog-api-key", "value": "={{ $env.GEMINI_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ systemInstruction: { parts: [{ text: 'You are a B2B sales qualification agent. Score the lead 0-100. Consider: budget signals, urgency/timing, decision-maker authority, and fit with the company\\'s product/service. Return ONLY JSON: {\\\"score\\\": number 0-100, \\\"breakdown\\\": {\\\"budget\\\": number, \\\"authority\\\": number, \\\"need\\\": number, \\\"timing\\\": number}, \\\"reasoning\\\": \\\"short explanation\\\", \\\"next_action\\\": \\\"call|whatsapp|email\\\"} (no markdown, no code fences)' }] }, contents: [{ parts: [{ text: 'Lead to score: ' + JSON.stringify($json) }] }], generationConfig: { temperature: 0.2, response_mime_type: 'application/json' } }) }}",
+        "options": {}
+      },
+      "id": "unq-llm2",
+      "name": "Score Fallback (2.5-flash)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput",
+      "position": [1260, -140]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.candidates }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              },
+              "id": "unq-scored2-cond"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "unq-scored2",
+      "name": "Fallback Scored?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1600, -140]
     },
     {
       "parameters": {
@@ -354,16 +443,31 @@
       ]
     },
     "Insert Lead": {
-      "main": [[{ "node": "Qualify? (Has OpenAI Key)", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "Qualify? (Has Gemini Key)", "type": "main", "index": 0 }]]
     },
-    "Qualify? (Has OpenAI Key)": {
+    "Qualify? (Has Gemini Key)": {
       "main": [
         [{ "node": "Score Lead with AI", "type": "main", "index": 0 }],
         [{ "node": "Respond Received", "type": "main", "index": 0 }]
       ]
     },
     "Score Lead with AI": {
-      "main": [[{ "node": "Parse AI Response", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "Primary Scored?", "type": "main", "index": 0 }]]
+    },
+    "Primary Scored?": {
+      "main": [
+        [{ "node": "Parse AI Response", "type": "main", "index": 0 }],
+        [{ "node": "Score Fallback (2.5-flash)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Score Fallback (2.5-flash)": {
+      "main": [[{ "node": "Fallback Scored?", "type": "main", "index": 0 }]]
+    },
+    "Fallback Scored?": {
+      "main": [
+        [{ "node": "Parse AI Response", "type": "main", "index": 0 }],
+        [{ "node": "Respond Received", "type": "main", "index": 0 }]
+      ]
     },
     "Parse AI Response": {
       "main": [[{ "node": "Save Score", "type": "main", "index": 0 }]]
