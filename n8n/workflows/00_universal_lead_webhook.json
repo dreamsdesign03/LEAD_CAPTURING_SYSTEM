@@ -5,49 +5,56 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "universal-lead",
-        "responseMode": "onReceived",
+        "responseMode": "responseNode",
         "options": {}
       },
-      "id": "un-webhook",
+      "id": "c15ea0bf-f345-49d0-84e1-1440adb516b8",
       "name": "Universal Lead Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [-900, 0],
+      "position": [-1056, -112],
       "webhookId": "universal-lead"
     },
     {
       "parameters": {
         "jsCode": "function deepGet(obj, keys) {\n  if (!obj || typeof obj !== 'object') return undefined;\n  for (const k of Object.keys(obj)) {\n    const kk = k.toLowerCase();\n    for (const target of keys) {\n      if (kk === target || kk.includes(target)) {\n        const v = obj[k];\n        if (v == null) continue;\n        if (Array.isArray(v)) return String(v[0] ?? '').trim();\n        if (typeof v === 'object') {\n          const inner = v.values?.[0] ?? v.value ?? v.text ?? v.label;\n          if (inner != null) return String(inner).trim();\n          continue;\n        }\n        if (typeof v === 'string' || typeof v === 'number') return String(v).trim();\n      }\n    }\n    if (obj[k] && typeof obj[k] === 'object') {\n      const r = deepGet(obj[k], keys);\n      if (r !== undefined) return r;\n    }\n  }\n  return undefined;\n}\n\nfunction findSource(obj) {\n  if (!obj || typeof obj !== 'object') return undefined;\n  for (const k of Object.keys(obj)) {\n    if (k.toLowerCase() === 'source' && typeof obj[k] === 'string') return obj[k].trim().toLowerCase();\n    if (obj[k] && typeof obj[k] === 'object') {\n      const r = findSource(obj[k]);\n      if (r) return r;\n    }\n  }\n  return undefined;\n}\n\nconst first = deepGet($json, ['first_name', 'fname']) || '';\nconst last = deepGet($json, ['last_name', 'lname']) || '';\nconst raw = JSON.stringify($json).toLowerCase();\nconst name = deepGet($json, ['full_name']) || `${first} ${last}`.trim() || deepGet($json, ['name', 'contact_name']) || 'Unknown';\nconst email = (deepGet($json, ['email', 'email_address', 'e-mail', 'mail']) || '').toLowerCase();\nconst phone = deepGet($json, ['phone', 'phone_number', 'mobile', 'whatsapp', 'telephone', 'contact_number', 'customer_phone']) || '';\n\nlet source = findSource($json) || 'manual';\nif (source === 'manual' && (raw.includes('leadgen') || raw.includes('field_data'))) source = 'meta';\nelse if (source === 'manual' && raw.includes('answers') && (raw.includes('fieldlabel') || raw.includes('field_key'))) source = 'linkedin';\nelse if (source === 'manual' && raw.includes('from') && raw.includes('whatsapp')) source = 'whatsapp';\n\nconst hasId = !!(email || phone);\nreturn [{ json: { name, email, phone, source, raw_data: $json, hasId } }];"
       },
-      "id": "un-normalise",
+      "id": "2ef49445-713e-42a0-a2ce-3f5dac08f6f1",
       "name": "Normalise Any Payload",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-560, 0]
+      "position": [-720, -112]
     },
     {
       "parameters": {
         "conditions": {
-          "options": {},
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
           "conditions": [
             {
-              "leftValue": "={{ $json.hasId }}",
-              "rightValue": true,
+              "id": "6e92eb1b-78de-40ca-a639-b3e07b49b9d0",
+              "leftValue": "={{ $json.raw_data.body.phone }}",
+              "rightValue": "",
               "operator": {
-                "type": "boolean",
-                "operation": "true"
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
               }
             }
           ],
-          "combinator": "and"
+          "combinator": "or"
         },
         "options": {}
       },
-      "id": "un-hasid",
+      "id": "275b3207-f6da-4c6e-a5c0-b5298dde2ca3",
       "name": "Has Email or Phone?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [-220, 0]
+      "position": [-368, -112]
     },
     {
       "parameters": {
@@ -56,9 +63,18 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
-            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -66,35 +82,43 @@
         "jsonBody": "={{ JSON.stringify({ p_email: $json.email || null, p_phone: $json.phone || null }) }}",
         "options": {}
       },
-      "id": "un-dup",
+      "id": "e097f49b-80b7-4c4e-b8a7-f5e0ef4aed35",
       "name": "Check for Duplicate",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [120, 300]
+      "position": [-96, -128],
+      "alwaysOutputData": true
     },
     {
       "parameters": {
         "conditions": {
-          "options": {},
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
           "conditions": [
             {
-              "leftValue": "={{ $json.length }}",
+              "leftValue": "={{ $json.lead_id }}",
               "rightValue": 0,
               "operator": {
-                "type": "number",
-                "operation": "gt"
-              }
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              },
+              "id": "ec3b04fb-688c-4a09-afd0-622c2304d8f1"
             }
           ],
           "combinator": "and"
         },
         "options": {}
       },
-      "id": "un-isfound",
+      "id": "598780f2-544d-42a5-aad0-d8382dcb8f3b",
       "name": "Duplicate?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [460, 300]
+      "position": [112, -128]
     },
     {
       "parameters": {
@@ -103,10 +127,22 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
-            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Prefer", "value": "return=representation" }
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
           ]
         },
         "sendBody": true,
@@ -114,11 +150,146 @@
         "jsonBody": "={{ JSON.stringify({ name: $('Normalise Any Payload').item.json.name, email: $('Normalise Any Payload').item.json.email || null, phone: $('Normalise Any Payload').item.json.phone || null, source: $('Normalise Any Payload').item.json.source, raw_data: $('Normalise Any Payload').item.json.raw_data }) }}",
         "options": {}
       },
-      "id": "un-insert",
+      "id": "f36a611f-2dda-4cde-923c-159fc9f68dee",
       "name": "Insert Lead",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [120, 0]
+      "position": [368, -112]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $env.OPENAI_API_KEY }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              },
+              "id": "unq-key-cond"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "unq-key",
+      "name": "Qualify? (Has OpenAI Key)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [640, -112]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.OPENAI_BASE_URL || 'https://api.openai.com' }}/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.OPENAI_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: $env.OPENAI_MODEL || 'gpt-4o-mini', temperature: 0.2, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: 'You are a B2B sales qualification agent. Score the lead 0-100. Consider: budget signals, urgency/timing, decision-maker authority, and fit with the company\\'s product/service. Return ONLY JSON: {\"score\": number 0-100, \"breakdown\": {\"budget\": number, \"authority\": number, \"need\": number, \"timing\": number}, \"reasoning\": \"short explanation\", \"next_action\": \"call|whatsapp|email\"}' }, { role: 'user', content: 'Lead to score: ' + JSON.stringify($json) }] }) }}",
+        "options": {}
+      },
+      "id": "unq-llm",
+      "name": "Score Lead with AI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [920, -320]
+    },
+    {
+      "parameters": {
+        "jsCode": "const content = JSON.parse($json.choices[0].message.content);\nconst leadId = $('Insert Lead').item.json.id;\nreturn [{ json: { lead_id: leadId, score: content.score, breakdown: content.breakdown, reasoning: content.reasoning, next_action: content.next_action, qualified: content.score >= 70 } }];"
+      },
+      "id": "unq-parse",
+      "name": "Parse AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1260, -320]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/lead_scores",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ lead_id: $json.lead_id, score: $json.score, breakdown: $json.breakdown, reasoning: $json.reasoning, qualified: $json.qualified }) }}",
+        "options": {}
+      },
+      "id": "unq-sav",
+      "name": "Save Score",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1600, -320]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/leads?id=eq.{{ $json.lead_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ status: $json.qualified ? 'qualified' : 'cold' }) }}",
+        "options": {}
+      },
+      "id": "unq-status",
+      "name": "Update Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1940, -320]
     },
     {
       "parameters": {
@@ -126,11 +297,11 @@
         "responseBody": "received",
         "options": {}
       },
-      "id": "un-ok",
+      "id": "311ec36d-e0cd-4f59-b774-2ef191570daf",
       "name": "Respond Received",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [460, 0]
+      "position": [2280, -320]
     },
     {
       "parameters": {
@@ -138,11 +309,23 @@
         "responseBody": "duplicate",
         "options": {}
       },
-      "id": "un-duppe",
+      "id": "d2638a43-46b1-420a-83cd-b1ed42748a82",
       "name": "Respond Duplicate",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [800, 300]
+      "position": [400, -304]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "phone number not available",
+        "options": {}
+      },
+      "id": "410793fc-d231-4035-9890-165aaa080f44",
+      "name": "Respond No Phone",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [-80, 208]
     }
   ],
   "connections": {
@@ -155,7 +338,7 @@
     "Has Email or Phone?": {
       "main": [
         [{ "node": "Check for Duplicate", "type": "main", "index": 0 }],
-        [{ "node": "Insert Lead", "type": "main", "index": 0 }]
+        [{ "node": "Respond No Phone", "type": "main", "index": 0 }]
       ]
     },
     "Check for Duplicate": {
@@ -168,9 +351,30 @@
       ]
     },
     "Insert Lead": {
+      "main": [[{ "node": "Qualify? (Has OpenAI Key)", "type": "main", "index": 0 }]]
+    },
+    "Qualify? (Has OpenAI Key)": {
+      "main": [
+        [{ "node": "Score Lead with AI", "type": "main", "index": 0 }],
+        [{ "node": "Respond Received", "type": "main", "index": 0 }]
+      ]
+    },
+    "Score Lead with AI": {
+      "main": [[{ "node": "Parse AI Response", "type": "main", "index": 0 }]]
+    },
+    "Parse AI Response": {
+      "main": [[{ "node": "Save Score", "type": "main", "index": 0 }]]
+    },
+    "Save Score": {
+      "main": [[{ "node": "Update Status", "type": "main", "index": 0 }]]
+    },
+    "Update Status": {
       "main": [[{ "node": "Respond Received", "type": "main", "index": 0 }]]
     }
   },
-  "settings": { "executionOrder": "v1" },
-  "meta": { "instanceId": "lead-capture" }
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ade94e3f132fc6ef7362a4b14a7cb35cc623a83dd7c61fde9e88d64d4f5a2a80"
+  }
 }
