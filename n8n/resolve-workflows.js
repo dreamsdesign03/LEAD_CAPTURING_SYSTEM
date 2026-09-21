@@ -32,7 +32,11 @@ for (const file of fs.readdirSync(srcDir)) {
   if (!file.endsWith('.json')) continue
   let content = fs.readFileSync(path.join(srcDir, file), 'utf8')
   for (const [token, value] of Object.entries(tokens)) {
-    if (value) {
+    if (!value) continue
+    // 1. Remove expression braces directly around a token: {{ $env.X }} -> literal value
+    content = content.replace(new RegExp(`\\{\\{\\s*\\$env\\.${token}\\s*\\}\\}`, 'g'), value)
+    // 2. Bare tokens inside Code-node JS (backticks): only for values that are safe to inline literally
+    if (['SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'N8N_URL'].includes(token)) {
       content = content.split(`$env.${token}`).join(value)
     }
   }
