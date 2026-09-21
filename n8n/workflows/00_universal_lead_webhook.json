@@ -208,8 +208,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000,
+      "maxTries": 6,
+      "waitBetweenTries": 10000,
       "onError": "continueRegularOutput",
       "position": [920, -320]
     },
@@ -257,7 +257,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ systemInstruction: { parts: [{ text: 'You are a B2B sales qualification agent. Score the lead 0-100. Consider: budget signals, urgency/timing, decision-maker authority, and fit with the company\\'s product/service. Return ONLY JSON: {\\\"score\\\": number 0-100, \\\"breakdown\\\": {\\\"budget\\\": number, \\\"authority\\\": number, \\\"need\\\": number, \\\"timing\\\": number}, \\\"reasoning\\\": \\\"short explanation\\\", \\\"next_action\\\": \\\"call|whatsapp|email\\\"} (no markdown, no code fences)' }] }, contents: [{ parts: [{ text: 'Lead to score: ' + JSON.stringify($json) }] }], generationConfig: { temperature: 0.2, response_mime_type: 'application/json' } }) }}",
+        "jsonBody": "={{ JSON.stringify({ systemInstruction: { parts: [{ text: 'You are a B2B sales qualification agent. Score the lead 0-100. Consider: budget signals, urgency/timing, decision-maker authority, and fit with the company\\'s product/service. Return ONLY JSON: {\\\"score\\\": number 0-100, \\\"breakdown\\\": {\\\"budget\\\": number, \\\"authority\\\": number, \\\"need\\\": number, \\\"timing\\\": number}, \\\"reasoning\\\": \\\"short explanation\\\", \\\"next_action\\\": \\\"call|whatsapp|email\\\"} (no markdown, no code fences)' }] }, contents: [{ parts: [{ text: 'Lead to score: ' + JSON.stringify($('Insert Lead').item.json) }] }], generationConfig: { temperature: 0.2, response_mime_type: 'application/json' } }) }}",
         "options": {}
       },
       "id": "unq-llm2",
@@ -265,8 +265,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000,
+      "maxTries": 6,
+      "waitBetweenTries": 10000,
       "onError": "continueRegularOutput",
       "position": [1260, -140]
     },
