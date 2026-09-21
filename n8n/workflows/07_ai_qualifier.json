@@ -64,17 +64,17 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.OPENAI_BASE_URL ? $env.OPENAI_BASE_URL : 'https://api.openai.com' }}/v1/chat/completions",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $env.OPENAI_API_KEY }}" },
+            { "name": "x-goog-api-key", "value": "={{ $env.GEMINI_API_KEY }}" },
             { "name": "Content-Type", "value": "application/json" }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ model: $env.OPENAI_MODEL || 'gpt-4o-mini', temperature: 0.2, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: 'You are a B2B sales qualification agent. Score the lead 0-100. Consider: budget signals, urgency/timing, decision-maker authority, and fit with the company\\'s product/service. Return ONLY JSON: {\"score\": number 0-100, \"breakdown\": {\"budget\": number, \"authority\": number, \"need\": number, \"timing\": number}, \"reasoning\": \"short explanation\", \"next_action\": \"call|whatsapp|email\"}' }, { role: 'user', content: 'Lead to score: ' + JSON.stringify($json) }] }) }}",
+        "jsonBody": "={{ JSON.stringify({ systemInstruction: { parts: [{ text: 'You are a B2B sales qualification agent. Score the lead 0-100. Consider: budget signals, urgency/timing, decision-maker authority, and fit with the company\\'s product/service. Return ONLY JSON: {\\\"score\\\": number 0-100, \\\"breakdown\\\": {\\\"budget\\\": number, \\\"authority\\\": number, \\\"need\\\": number, \\\"timing\\\": number}, \\\"reasoning\\\": \\\"short explanation\\\", \\\"next_action\\\": \\\"call|whatsapp|email\\\"} (no markdown, no code fences)' }] }, contents: [{ parts: [{ text: 'Lead to score: ' + JSON.stringify($json) }] }], generationConfig: { temperature: 0.2, response_mime_type: 'application/json' } }) }}",
         "options": {}
       },
       "id": "q-llm",
@@ -85,7 +85,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const content = JSON.parse($json.choices[0].message.content);\nconst leadId = $('Get New Leads').item.json.id;\nreturn [{ json: { lead_id: leadId, ...content } }];"
+        "jsCode": "const raw = $json.candidates[0].content.parts[0].text;\nconst content = JSON.parse(raw);\nconst leadId = $('Get New Leads').item.json.id;\nreturn [{ json: { lead_id: leadId, ...content } }];"
       },
       "id": "q-parse",
       "name": "Parse AI Response",
