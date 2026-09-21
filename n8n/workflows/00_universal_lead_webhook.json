@@ -350,7 +350,7 @@
     {
       "parameters": {
         "method": "PATCH",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/leads?id=eq.{{ $json.lead_id }}",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/leads?id=eq.{{ $('Parse AI Response').item.json.lead_id }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -374,7 +374,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ status: $json.qualified ? 'qualified' : 'cold' }) }}",
+        "jsonBody": "={{ JSON.stringify({ status: $('Parse AI Response').item.json.qualified ? 'qualified' : 'cold' }) }}",
         "options": {}
       },
       "id": "unq-status",

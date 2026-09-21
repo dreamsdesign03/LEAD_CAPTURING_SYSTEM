@@ -126,7 +126,7 @@
           "options": {},
           "conditions": [
             {
-              "leftValue": "={{ $json.score }}",
+              "leftValue": "={{ $('Parse AI Response').item.json.score }}",
               "rightValue": 70,
               "operator": {
                 "type": "number",
@@ -147,7 +147,7 @@
     {
       "parameters": {
         "method": "PATCH",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/leads?id=eq.{{ $json.lead_id }}",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/leads?id=eq.{{ $('Parse AI Response').item.json.lead_id }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -171,7 +171,7 @@
     {
       "parameters": {
         "method": "PATCH",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/leads?id=eq.{{ $json.lead_id }}",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/leads?id=eq.{{ $('Parse AI Response').item.json.lead_id }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
