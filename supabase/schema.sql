@@ -163,3 +163,23 @@ CREATE POLICY dev_all_config      ON public.config       FOR ALL USING (true) WI
 ALTER PUBLICATION supabase_realtime ADD TABLE public.leads;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.lead_scores;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.outreach_log;
+
+-- ---------------------------------------------------------------------
+-- 12. RPC: find existing lead by email OR phone (used by n8n dedupe)
+--     Call: POST /rest/v1/rpc/find_lead_by_contact  {"p_email":"..","p_phone":".."}
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.find_lead_by_contact(
+  p_email TEXT DEFAULT NULL,
+  p_phone TEXT DEFAULT NULL
+) RETURNS TABLE (lead_id UUID)
+LANGUAGE plpgsql SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT l.id
+  FROM public.leads l
+  WHERE (p_email IS NOT NULL AND p_email <> '' AND l.email = p_email)
+     OR (p_phone IS NOT NULL AND p_phone <> '' AND l.phone = p_phone)
+  LIMIT 1;
+END;
+$$;
