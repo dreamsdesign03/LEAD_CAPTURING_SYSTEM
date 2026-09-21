@@ -81,6 +81,9 @@
       "name": "Score Lead with AI",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
       "position": [-80, 0]
     },
     {
