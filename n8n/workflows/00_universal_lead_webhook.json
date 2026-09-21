@@ -107,7 +107,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ name: $json.name, email: $json.email || null, phone: $json.phone || null, source: $json.source, raw_data: $json.raw_data }) }}",
+        "jsonBody": "={{ JSON.stringify({ name: $('Normalise Any Payload').item.json.name, email: $('Normalise Any Payload').item.json.email || null, phone: $('Normalise Any Payload').item.json.phone || null, source: $('Normalise Any Payload').item.json.source, raw_data: $('Normalise Any Payload').item.json.raw_data }) }}",
         "options": {}
       },
       "id": "un-insert",
