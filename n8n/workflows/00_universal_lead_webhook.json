@@ -314,7 +314,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/lead_scores",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/lead_scores?on_conflict=lead_id",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -332,7 +332,7 @@
             },
             {
               "name": "Prefer",
-              "value": "return=minimal"
+              "value": "resolution=merge-duplicates,return=minimal"
             }
           ]
         },

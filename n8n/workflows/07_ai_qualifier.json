@@ -99,14 +99,14 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/lead_scores",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/lead_scores?on_conflict=lead_id",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
             { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
             { "name": "Content-Type", "value": "application/json" },
-            { "name": "Prefer", "value": "return=minimal" }
+            { "name": "Prefer", "value": "resolution=merge-duplicates,return=minimal" }
           ]
         },
         "sendBody": true,
