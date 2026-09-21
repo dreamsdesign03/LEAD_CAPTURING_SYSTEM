@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS public.leads (
   source      TEXT NOT NULL CHECK (source IN ('meta','linkedin','google_form','google_sheet','whatsapp','calling_agent','manual')),
   raw_data    JSONB DEFAULT '{}'::jsonb,
   status      TEXT NOT NULL DEFAULT 'new'
-              CHECK (status IN ('new','qualified','cold','contacted','responded','converted','unqualified')),
+              CHECK (status IN ('new','hot','warm','warm','cold','contacted','responded','converted','unqualified')),
   assigned_to TEXT,
   notes       TEXT,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -183,3 +183,27 @@ BEGIN
   LIMIT 1;
 END;
 $$;
+
+-- ---------------------------------------------------------------------
+-- MIGRATION (idempotent): lead detail columns + budget tiers + hot/warm
+-- Run this after creating the base schema, or upgrade existing installs.
+-- ---------------------------------------------------------------------
+ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS company  TEXT;
+ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS role     TEXT;
+ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS industry TEXT;
+ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS city     TEXT;
+ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS website  TEXT;
+ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS whatsapp TEXT HOME;
+ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS budget   TEXT
+  CHECK (budget IS NULL OR budget IN
+    ('₹35,000–₹50,000','₹50,000–₹75,000','₹75,000–₹1,00,000','₹1,00,000–₹1,50,000',
+     '₹1,50,000–₹2,50,000','₹2,50,000–₹5,00,000','Over ₹5,00,000'));
+
+DO $$
+BEGIN
+  IF exists(SELECT 1 FROM pg_constraint WHERE conname = 'leads_status_check') THEN
+    ALTER TABLE public.leads DROP CONSTRAINT leads_status_check;
+  END IF;
+END $$;
+ALTER TABLE public.leads ADD CONSTRAINT leads_status_check
+  CHECK (status IN ('new','hot','warm','warm','cold','contacted','responded','converted','unqualified'));
