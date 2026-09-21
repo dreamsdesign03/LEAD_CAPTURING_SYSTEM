@@ -23,6 +23,10 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# Local-only n8n secrets (resolved workflows)
+n8n/secrets.local.json
+n8n/workflows-resolved/
 *.ntvs*
 *.njsproj
 *.sln
