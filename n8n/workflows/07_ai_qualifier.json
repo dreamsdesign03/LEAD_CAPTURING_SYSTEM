@@ -183,7 +183,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ status: 'qualified' }) }}",
+        "jsonBody": "={{ JSON.stringify({ status: $('Parse AI Response').item.json.score >= 70 ? 'hot' : $('Parse AI Response').item.json.score >= 40 ? 'warm' : 'cold' }) }}",
         "options": {}
       },
       "id": "q-hot",

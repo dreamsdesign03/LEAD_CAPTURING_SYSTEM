@@ -1,7 +1,8 @@
 const CARDS = [
   { key: 'total', label: 'Total Leads', color: 'text-slate-900' },
   { key: 'new', label: 'New / Awaiting AI', color: 'text-slate-500' },
-  { key: 'qualified', label: 'Qualified (Hot)', color: 'text-emerald-600' },
+  { key: 'hot', label: 'Hot', color: 'text-rose-600' },
+  { key: 'warm', label: 'Warm', color: 'text-amber-600' },
   { key: 'cold', label: 'Cold', color: 'text-sky-600' },
   { key: 'converted', label: 'Converted', color: 'text-green-600' },
 ]
@@ -10,7 +11,8 @@ export default function StatsCards({ leads }) {
   const counts = {
     total: leads.length,
     new: leads.filter((l) => l.status === 'new').length,
-    qualified: leads.filter((l) => l.status === 'qualified' || l.ai_qualified).length,
+    hot: leads.filter((l) => l.status === 'hot' || l.status === 'qualified').length,
+    warm: leads.filter((l) => l.status === 'warm').length,
     cold: leads.filter((l) => l.status === 'cold').length,
     converted: leads.filter((l) => l.status === 'converted').length,
   }

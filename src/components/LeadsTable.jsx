@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { SOURCE_LABELS, STATUS_META, formatDate, scoreColor } from '../lib/supabase'
 
 const SOURCE_OPTIONS = ['', 'meta', 'linkedin', 'google_form', 'google_sheet', 'whatsapp', 'calling_agent', 'manual']
-const STATUS_OPTIONS = ['', 'new', 'qualified', 'cold', 'contacted', 'responded', 'converted', 'unqualified']
+const STATUS_OPTIONS = ['', 'new', 'hot', 'warm', 'cold', 'contacted', 'responded', 'converted', 'unqualified']
 
 export default function LeadsTable({ leads, onSelect }) {
   const [search, setSearch] = useState('')

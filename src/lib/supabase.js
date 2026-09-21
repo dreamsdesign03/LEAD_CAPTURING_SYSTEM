@@ -23,6 +23,8 @@ export const SOURCE_LABELS = {
 
 export const STATUS_META = {
   new: { label: 'New', color: 'bg-slate-100 text-slate-700' },
+  hot: { label: 'Hot', color: 'bg-rose-100 text-rose-700' },
+  warm: { label: 'Warm', color: 'bg-amber-100 text-amber-700' },
   qualified: { label: 'Qualified', color: 'bg-emerald-100 text-emerald-700' },
   cold: { label: 'Cold', color: 'bg-sky-100 text-sky-700' },
   contacted: { label: 'Contacted', color: 'bg-indigo-100 text-indigo-700' },
