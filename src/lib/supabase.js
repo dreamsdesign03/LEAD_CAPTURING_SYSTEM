@@ -43,6 +43,15 @@ export const SOURCE_COLORS = {
   manual: '#64748B',
 }
 
+export const APPOINTMENT_META = {
+  booked: { label: 'Booked', color: 'bg-emerald-100 text-emerald-700' },
+  not_booked: { label: 'Not booked', color: 'bg-slate-100 text-slate-500' },
+}
+
+export function appointmentMeta(appointmentBooked) {
+  return appointmentBooked ? APPOINTMENT_META.booked : APPOINTMENT_META.not_booked
+}
+
 export function scoreColor(score) {
   if (score == null) return 'bg-slate-200 text-slate-600'
   if (score >= 70) return 'bg-emerald-500 text-white'

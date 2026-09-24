@@ -19,9 +19,12 @@ CREATE TABLE IF NOT EXISTS public.leads (
   source      TEXT NOT NULL CHECK (source IN ('meta','linkedin','google_form','google_sheet','whatsapp','calling_agent','manual')),
   raw_data    JSONB DEFAULT '{}'::jsonb,
   status      TEXT NOT NULL DEFAULT 'new'
-              CHECK (status IN ('new','hot','warm','warm','cold','contacted','responded','converted','unqualified')),
+              CHECK (status IN ('new','hot','warm','cold','qualified','contacted','responded','converted','unqualified')),
   assigned_to TEXT,
   notes       TEXT,
+  appointment_booked BOOLEAN NOT NULL DEFAULT false,
+  reminders_sent     INT     NOT NULL DEFAULT 0,
+  last_reminder_at   TIMESTAMPTZ,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -91,6 +94,7 @@ CREATE INDEX IF NOT EXISTS idx_leads_source        ON public.leads (source);
 CREATE INDEX IF NOT EXISTS idx_leads_status        ON public.leads (status);
 CREATE INDEX IF NOT EXISTS idx_leads_created_at    ON public.leads (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_scores_lead         ON public.lead_scores (lead_id);
+CREATE INDEX IF NOT EXISTS idx_leads_reminders     ON public.leads (status, appointment_booked, reminders_sent);
 CREATE INDEX IF NOT EXISTS idx_outreach_lead       ON public.outreach_log (lead_id);
 CREATE INDEX IF NOT EXISTS idx_followups_pending   ON public.followups (status, scheduled_at);
 
@@ -193,7 +197,7 @@ ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS role     TEXT;
 ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS industry TEXT;
 ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS city     TEXT;
 ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS website  TEXT;
-ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS whatsapp TEXT HOME;
+ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS whatsapp TEXT;
 ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS budget   TEXT
   CHECK (budget IS NULL OR budget IN
     ('₹35,000–₹50,000','₹50,000–₹75,000','₹75,000–₹1,00,000','₹1,00,000–₹1,50,000',
@@ -206,4 +210,4 @@ BEGIN
   END IF;
 END $$;
 ALTER TABLE public.leads ADD CONSTRAINT leads_status_check
-  CHECK (status IN ('new','hot','warm','warm','cold','contacted','responded','converted','unqualified'));
+  CHECK (status IN ('new','hot','warm','cold','qualified','contacted','responded','converted','unqualified'));

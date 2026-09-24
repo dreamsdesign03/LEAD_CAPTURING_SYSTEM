@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
-import { SOURCE_LABELS, STATUS_META, formatDate, scoreColor } from '../lib/supabase'
+import { SOURCE_LABELS, STATUS_META, appointmentMeta, formatDate, scoreColor } from '../lib/supabase'
 
 const SOURCE_OPTIONS = ['', 'meta', 'linkedin', 'google_form', 'google_sheet', 'whatsapp', 'calling_agent', 'manual']
-const STATUS_OPTIONS = ['', 'new', 'hot', 'warm', 'cold', 'contacted', 'responded', 'converted', 'unqualified']
+const STATUS_OPTIONS = ['', 'new', 'hot', 'warm', 'cold', 'qualified', 'contacted', 'responded', 'converted', 'unqualified']
 
 export default function LeadsTable({ leads, onSelect }) {
   const [search, setSearch] = useState('')
@@ -75,6 +75,7 @@ export default function LeadsTable({ leads, onSelect }) {
               <th className="px-4 py-2.5 font-medium">Source</th>
               <th className="px-4 py-2.5 font-medium">Score</th>
               <th className="px-4 py-2.5 font-medium">Status</th>
+              <th className="px-4 py-2.5 font-medium">Appointment</th>
               <th className="px-4 py-2.5 font-medium">Created</th>
             </tr>
           </thead>
@@ -113,6 +114,13 @@ export default function LeadsTable({ leads, onSelect }) {
                     {STATUS_META[l.status]?.label ?? l.status}
                   </span>
                 </td>
+                <td className="px-4 py-3">
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${appointmentMeta(l.appointment_booked).color}`}
+                  >
+                    {appointmentMeta(l.appointment_booked).label}
+                  </span>
+                </td>
                 <td className="px-4 py-3 text-xs text-slate-400">
                   {formatDate(l.created_at)}
                 </td>
@@ -120,7 +128,7 @@ export default function LeadsTable({ leads, onSelect }) {
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-slate-400">
+                <td colSpan={7} className="px-4 py-10 text-center text-slate-400">
                   No leads match your filters.
                 </td>
               </tr>

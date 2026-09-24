@@ -1,5 +1,4 @@
 {
-  "name": "00-Universal-Lead-Webhook",
   "nodes": [
     {
       "parameters": {
@@ -8,22 +7,22 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "c15ea0bf-f345-49d0-84e1-1440adb516b8",
+      "id": "8e310c7b-9f12-4986-b972-9091651681fe",
       "name": "Universal Lead Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [-1056, -112],
+      "position": [-1920, -160],
       "webhookId": "universal-lead"
     },
     {
       "parameters": {
         "jsCode": "function deepGet(obj, keys) {\n  if (!obj || typeof obj !== 'object') return undefined;\n  for (const k of Object.keys(obj)) {\n    const kk = k.toLowerCase();\n    for (const target of keys) {\n      if (kk === target || kk.includes(target)) {\n        const v = obj[k];\n        if (v == null) continue;\n        if (Array.isArray(v)) return String(v[0] ?? '').trim();\n        if (typeof v === 'object') {\n          const inner = v.values?.[0] ?? v.value ?? v.text ?? v.label;\n          if (inner != null) return String(inner).trim();\n          continue;\n        }\n        if (typeof v === 'string' || typeof v === 'number') return String(v).trim();\n      }\n    }\n    if (obj[k] && typeof obj[k] === 'object') {\n      const r = deepGet(obj[k], keys);\n      if (r !== undefined) return r;\n    }\n  }\n  return undefined;\n}\n\nfunction findSource(obj) {\n  if (!obj || typeof obj !== 'object') return undefined;\n  for (const k of Object.keys(obj)) {\n    if (k.toLowerCase() === 'source' && typeof obj[k] === 'string') return obj[k].trim().toLowerCase();\n    if (obj[k] && typeof obj[k] === 'object') {\n      const r = findSource(obj[k]);\n      if (r) return r;\n    }\n  }\n  return undefined;\n}\n\nconst first = deepGet($json, ['first_name', 'fname']) || '';\nconst last = deepGet($json, ['last_name', 'lname']) || '';\nconst raw = JSON.stringify($json).toLowerCase();\nconst name = deepGet($json, ['full_name']) || `${first} ${last}`.trim() || deepGet($json, ['name', 'contact_name']) || 'Unknown';\nconst email = (deepGet($json, ['email', 'email_address', 'e-mail', 'mail']) || '').toLowerCase();\nconst phone = deepGet($json, ['phone', 'phone_number', 'mobile', 'whatsapp', 'telephone', 'contact_number', 'customer_phone']) || '';\n\nlet source = findSource($json) || 'manual';\nif (source === 'manual' && (raw.includes('leadgen') || raw.includes('field_data'))) source = 'meta';\nelse if (source === 'manual' && raw.includes('answers') && (raw.includes('fieldlabel') || raw.includes('field_key'))) source = 'linkedin';\nelse if (source === 'manual' && raw.includes('from') && raw.includes('whatsapp')) source = 'whatsapp';\n\nconst hasId = !!(email || phone);\nreturn [{ json: { name, email, phone, source, raw_data: $json, hasId } }];"
       },
-      "id": "2ef49445-713e-42a0-a2ce-3f5dac08f6f1",
+      "id": "c91a1081-014e-4a92-bd58-4bff7794af12",
       "name": "Normalise Any Payload",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-720, -112]
+      "position": [-1712, -160]
     },
     {
       "parameters": {
@@ -50,11 +49,11 @@
         },
         "options": {}
       },
-      "id": "275b3207-f6da-4c6e-a5c0-b5298dde2ca3",
+      "id": "77a5703b-974b-411e-9a5e-22abccebf90a",
       "name": "Has Email or Phone?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [-368, -112]
+      "position": [-1520, -160]
     },
     {
       "parameters": {
@@ -63,18 +62,9 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {
-              "name": "apikey",
-              "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
-            },
-            {
-              "name": "Authorization",
-              "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
           ]
         },
         "sendBody": true,
@@ -82,11 +72,11 @@
         "jsonBody": "={{ JSON.stringify({ p_email: $json.email || null, p_phone: $json.phone || null }) }}",
         "options": {}
       },
-      "id": "e097f49b-80b7-4c4e-b8a7-f5e0ef4aed35",
+      "id": "b89399bc-c218-43ca-ad4f-5cbaa5c0338e",
       "name": "Check for Duplicate",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-96, -128],
+      "position": [-1248, -176],
       "alwaysOutputData": true
     },
     {
@@ -114,11 +104,11 @@
         },
         "options": {}
       },
-      "id": "598780f2-544d-42a5-aad0-d8382dcb8f3b",
+      "id": "439d29d9-df06-46cd-bcc0-57b10ae08e13",
       "name": "Duplicate?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [112, -128]
+      "position": [-1040, -176]
     },
     {
       "parameters": {
@@ -127,22 +117,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {
-              "name": "apikey",
-              "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
-            },
-            {
-              "name": "Authorization",
-              "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            },
-            {
-              "name": "Prefer",
-              "value": "return=representation"
-            }
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=representation" }
           ]
         },
         "sendBody": true,
@@ -150,11 +128,11 @@
         "jsonBody": "={{ JSON.stringify({ name: $('Normalise Any Payload').item.json.name, email: $('Normalise Any Payload').item.json.email || null, phone: $('Normalise Any Payload').item.json.phone || null, source: $('Normalise Any Payload').item.json.source, raw_data: $('Normalise Any Payload').item.json.raw_data }) }}",
         "options": {}
       },
-      "id": "f36a611f-2dda-4cde-923c-159fc9f68dee",
+      "id": "50c3d7fe-b7cc-4d21-a807-ab8848639c7c",
       "name": "Insert Lead",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [368, -112]
+      "position": [-784, -160]
     },
     {
       "parameters": {
@@ -181,16 +159,16 @@
         },
         "options": {}
       },
-      "id": "unq-key",
+      "id": "82d3823a-12ec-4f26-a6be-018efa5ec6c0",
       "name": "Qualify? (Has Gemini Key)",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [640, -112]
+      "position": [-512, -160]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "https://generativelanguage.googleapis.com/v1beta/models/{{ $env.GEMINI_MODEL }}:generateContent",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -203,15 +181,15 @@
         "jsonBody": "={{ JSON.stringify({ systemInstruction: { parts: [{ text: 'You are a B2B sales qualification agent. Score the lead 0-100. Consider: budget signals, urgency/timing, decision-maker authority, and fit with the company\\'s product/service. Return ONLY JSON: {\\\"score\\\": number 0-100, \\\"breakdown\\\": {\\\"budget\\\": number, \\\"authority\\\": number, \\\"need\\\": number, \\\"timing\\\": number}, \\\"reasoning\\\": \\\"short explanation\\\", \\\"next_action\\\": \\\"call|whatsapp|email\\\"} (no markdown, no code fences)' }] }, contents: [{ parts: [{ text: 'Lead to score: ' + JSON.stringify($json) }] }], generationConfig: { temperature: 0.2, response_mime_type: 'application/json' } }) }}",
         "options": {}
       },
-      "id": "unq-llm",
+      "id": "ad81d049-dc74-4143-b2b0-f6a451188801",
       "name": "Score Lead with AI",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "retryOnFail": true,
-      "maxTries": 6,
-      "waitBetweenTries": 10000,
-      "onError": "continueRegularOutput",
-      "position": [920, -320]
+      "maxTries": 5,
+      "waitBetweenTries": 30000,
+      "position": [-272, -336],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -224,7 +202,7 @@
           },
           "conditions": [
             {
-              "leftValue": "={{ $json.candidates }}",
+              "leftValue": "={{ $json.candidates.toString() }}",
               "rightValue": "",
               "operator": {
                 "type": "string",
@@ -238,11 +216,11 @@
         },
         "options": {}
       },
-      "id": "unq-scored",
+      "id": "b19609de-2005-4ba9-97ca-7bc3677a5fac",
       "name": "Primary Scored?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [1260, -480]
+      "position": [-64, -336]
     },
     {
       "parameters": {
@@ -260,15 +238,15 @@
         "jsonBody": "={{ JSON.stringify({ systemInstruction: { parts: [{ text: 'You are a B2B sales qualification agent. Score the lead 0-100. Consider: budget signals, urgency/timing, decision-maker authority, and fit with the company\\'s product/service. Return ONLY JSON: {\\\"score\\\": number 0-100, \\\"breakdown\\\": {\\\"budget\\\": number, \\\"authority\\\": number, \\\"need\\\": number, \\\"timing\\\": number}, \\\"reasoning\\\": \\\"short explanation\\\", \\\"next_action\\\": \\\"call|whatsapp|email\\\"} (no markdown, no code fences)' }] }, contents: [{ parts: [{ text: 'Lead to score: ' + JSON.stringify($('Insert Lead').item.json) }] }], generationConfig: { temperature: 0.2, response_mime_type: 'application/json' } }) }}",
         "options": {}
       },
-      "id": "unq-llm2",
+      "id": "ac516bee-7ec7-4ef6-91cc-94a01f07488f",
       "name": "Score Fallback (2.5-flash)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "retryOnFail": true,
-      "maxTries": 6,
-      "waitBetweenTries": 10000,
-      "onError": "continueRegularOutput",
-      "position": [1260, -140]
+      "maxTries": 5,
+      "waitBetweenTries": 30000,
+      "position": [208, -368],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -281,7 +259,7 @@
           },
           "conditions": [
             {
-              "leftValue": "={{ $json.candidates }}",
+              "leftValue": "={{ $json.candidates.toString()}}",
               "rightValue": "",
               "operator": {
                 "type": "string",
@@ -295,21 +273,21 @@
         },
         "options": {}
       },
-      "id": "unq-scored2",
+      "id": "82b88e76-f711-4c0e-8eb0-c667116b9c51",
       "name": "Fallback Scored?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [1600, -140]
+      "position": [432, -368]
     },
     {
       "parameters": {
-        "jsCode": "const raw = $json.candidates[0].content.parts[0].text;\nconst content = JSON.parse(raw);\nconst leadId = $('Insert Lead').item.json.id;\nreturn [{ json: { lead_id: leadId, score: content.score, breakdown: content.breakdown, reasoning: content.reasoning, next_action: content.next_action, qualified: content.score >= 70 } }];"
+        "jsCode": "const raw = $json.candidates[0].content.parts[0].text;\nconst content = JSON.parse(raw);\nconst leadId = $('Insert Lead').item.json.id;\nconst tier = content.score >= 70 ? 'hot' : content.score >= 40 ? 'warm' : 'cold';\nreturn [{ json: { lead_id: leadId, score: content.score, breakdown: content.breakdown, reasoning: content.reasoning, next_action: content.next_action, qualified: content.score >= 70, tier } }];"
       },
-      "id": "unq-parse",
+      "id": "c4b8d8d9-4e84-4425-993c-f11ccdc5b833",
       "name": "Parse AI Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1260, -320]
+      "position": [240, -624]
     },
     {
       "parameters": {
@@ -318,22 +296,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {
-              "name": "apikey",
-              "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
-            },
-            {
-              "name": "Authorization",
-              "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            },
-            {
-              "name": "Prefer",
-              "value": "resolution=merge-duplicates,return=minimal"
-            }
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "resolution=merge-duplicates,return=minimal" }
           ]
         },
         "sendBody": true,
@@ -341,11 +307,92 @@
         "jsonBody": "={{ JSON.stringify({ lead_id: $json.lead_id, score: $json.score, breakdown: $json.breakdown, reasoning: $json.reasoning, qualified: $json.qualified }) }}",
         "options": {}
       },
-      "id": "unq-sav",
+      "id": "557da104-cb27-472d-8976-906096332083",
       "name": "Save Score",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1600, -320]
+      "position": [464, -624]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "unq-hot-cond",
+              "leftValue": "={{ $('Parse AI Response').item.json.tier }}",
+              "rightValue": "hot",
+              "operator": { "type": "string", "operation": "equals", "singleValue": true }
+            },
+            {
+              "id": "unq-warm-cond",
+              "leftValue": "={{ $('Parse AI Response').item.json.tier }}",
+              "rightValue": "warm",
+              "operator": { "type": "string", "operation": "equals", "singleValue": true }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "d0e7fa23-57ad-4119-bb0c-cf20b2982210",
+      "name": "Hot or Warm?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [992, -256]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "received",
+        "options": {}
+      },
+      "id": "bb84923a-724c-4573-8b60-14333cdc36df",
+      "name": "Respond Received",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1936, -144]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "duplicate",
+        "options": {}
+      },
+      "id": "b1e20f04-a33c-4d85-a2ec-d07fff104a60",
+      "name": "Respond Duplicate",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [-784, -352]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "phone number not available",
+        "options": {}
+      },
+      "id": "e32e4c26-871a-4559-9fd3-b229611cd62d",
+      "name": "Respond No Phone",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [-1248, 64]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "lead score not fetch properly ",
+        "options": {}
+      },
+      "id": "4df16b19-087e-48ee-8a98-fbaec294327f",
+      "name": "Respond Received1",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [656, -352]
     },
     {
       "parameters": {
@@ -354,70 +401,72 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {
-              "name": "apikey",
-              "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
-            },
-            {
-              "name": "Authorization",
-              "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            },
-            {
-              "name": "Prefer",
-              "value": "return=minimal"
-            }
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ status: $('Parse AI Response').item.json.qualified ? 'qualified' : 'cold' }) }}",
+        "jsonBody": "={{ JSON.stringify({ status: $('Parse AI Response').item.json.tier }) }}",
         "options": {}
       },
-      "id": "unq-status",
-      "name": "Update Status",
+      "id": "bc0c8c6c-afea-4f44-aa78-677c26034fd7",
+      "name": "Update Status1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1940, -320]
+      "position": [656, -624]
     },
     {
       "parameters": {
-        "respondWith": "text",
-        "responseBody": "received",
-        "options": {}
+        "method": "POST",
+        "url": "https://graph.facebook.com/v18.0/{{ $env.WHATSAPP_PHONE_NUMBER_ID }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{ $env.WHATSAPP_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json " }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"recipient_type\": \"individual\",\n  \"to\": \"{{ $('Universal Lead Webhook').item.json.body.phone }}\",\n  \"type\": \"template\",\n  \"template\": {\n    \"name\": \"{{ $env.WHATSAPP_TEMPLATE_NAME }}\",\n    \"language\": {\n      \"code\": \"en\"\n    },\n    \"components\": [\n      {\n        \"type\": \"body\",\n        \"parameters\": [\n          { \"type\": \"text\", \"text\": \"{{ $('Universal Lead Webhook').item.json.body.name }}\" },\n          { \"type\": \"text\", \"text\": \"{{ $('Universal Lead Webhook').item.json.body.company }}\" }\n        ]\n      }\n    ]\n  }\n}",
+        "options": {
+          "response": {
+            "response": {}
+          }
+        }
       },
-      "id": "311ec36d-e0cd-4f59-b774-2ef191570daf",
-      "name": "Respond Received",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
-      "position": [2280, -320]
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1664, -336],
+      "id": "95567ab6-9c65-4659-9dd0-2fbfaa1beafe",
+      "name": "HTTP Request2"
     },
     {
       "parameters": {
-        "respondWith": "text",
-        "responseBody": "duplicate",
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/outreach_log",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ lead_id: $('Parse AI Response').item.json.lead_id, channel: 'whatsapp', status: 'sent', message_content: 'Template: {{ $env.WHATSAPP_TEMPLATE_NAME }}', meta: { appointment_booked: false } }) }}",
         "options": {}
       },
-      "id": "d2638a43-46b1-420a-83cd-b1ed42748a82",
-      "name": "Respond Duplicate",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
-      "position": [400, -304]
-    },
-    {
-      "parameters": {
-        "respondWith": "text",
-        "responseBody": "phone number not available",
-        "options": {}
-      },
-      "id": "410793fc-d231-4035-9890-165aaa080f44",
-      "name": "Respond No Phone",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
-      "position": [-80, 208]
+      "id": "wh-log-001",
+      "name": "Log WhatsApp Outreach",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1936, -528]
     }
   ],
   "connections": {
@@ -466,16 +515,28 @@
     "Fallback Scored?": {
       "main": [
         [{ "node": "Parse AI Response", "type": "main", "index": 0 }],
-        [{ "node": "Respond Received", "type": "main", "index": 0 }]
+        [{ "node": "Respond Received1", "type": "main", "index": 0 }]
       ]
     },
     "Parse AI Response": {
       "main": [[{ "node": "Save Score", "type": "main", "index": 0 }]]
     },
     "Save Score": {
-      "main": [[{ "node": "Update Status", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "Update Status1", "type": "main", "index": 0 }]]
     },
-    "Update Status": {
+    "Hot or Warm?": {
+      "main": [
+        [{ "node": "HTTP Request2", "type": "main", "index": 0 }],
+        [{ "node": "Respond Received", "type": "main", "index": 0 }]
+      ]
+    },
+    "Update Status1": {
+      "main": [[{ "node": "Hot or Warm?", "type": "main", "index": 0 }]]
+    },
+    "HTTP Request2": {
+      "main": [[{ "node": "Log WhatsApp Outreach", "type": "main", "index": 0 }]]
+    },
+    "Log WhatsApp Outreach": {
       "main": [[{ "node": "Respond Received", "type": "main", "index": 0 }]]
     }
   },

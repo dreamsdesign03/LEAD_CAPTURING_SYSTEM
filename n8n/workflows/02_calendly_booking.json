@@ -1,0 +1,98 @@
+{
+  "name": "02-Calendly-Booking-Marks-Lead",
+  "nodes": [
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "events": [
+          "invitee.created"
+        ]
+      },
+      "type": "n8n-nodes-base.calendlyTrigger",
+      "typeVersion": 1,
+      "position": [-432, 96],
+      "id": "be1ccb8e-9edd-4ef9-a2dd-aa65b187fc30",
+      "name": "Calendly Trigger",
+      "webhookId": "6f565ef5-9f98-4a0b-9c00-7488dccea15b",
+      "credentials": {
+        "calendlyOAuth2Api": {
+          "id": "G9fVDvO1dM9WXx8d",
+          "name": "Calendly account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const p = $json.payload || $json;\nconst name = p.name || '';\nconst email = String(p.email || '').trim().toLowerCase();\nlet phone = String(p.phone_number || '');\nconst qa = Array.isArray(p.questions_and_answers) ? p.questions_and_answers : [];\nfor (const q of qa) {\n  const key = String(q.question || '').toLowerCase();\n  if (!phone && (key.includes('phone') || key.includes('number') || key.includes('mobile') || key.includes('whatsapp'))) {\n    phone = String(q.answer || '');\n  }\n}\nif (!phone && p.text_reminder_number) phone = p.text_reminder_number;\nconst phoneCleaned = phone.replace(/[^0-9+]/g, '');\nreturn [{ json: { name, email, phone: phoneCleaned, event_name: (p.event && p.event.name) || '' } }];"
+      },
+      "id": "cb-extract",
+      "name": "Extract Invitee",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-208, 96]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "{{ $env.SUPABASE_URL }}/rest/v1/rpc/find_lead_by_contact",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "{{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ p_email: $json.email || null, p_phone: $json.phone || null }) }}",
+        "options": {}
+      },
+      "id": "cb-find",
+      "name": "Find Lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [32, 96]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "{{ $env.SUPABASE_URL }}/rest/v1/leads?id=eq.{{ $json.lead_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "{{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ appointment_booked: true, status: 'qualified', last_reminder_at: null }) }}",
+        "options": {}
+      },
+      "id": "cb-mark",
+      "name": "Mark Booked",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [272, 96]
+    }
+  ],
+  "connections": {
+    "Calendly Trigger": {
+      "main": [[{ "node": "Extract Invitee", "type": "main", "index": 0 }]]
+    },
+    "Extract Invitee": {
+      "main": [[{ "node": "Find Lead", "type": "main", "index": 0 }]]
+    },
+    "Find Lead": {
+      "main": [[{ "node": "Mark Booked", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ade94e3f132fc6ef7362a4b14a7cb35cc623a83dd7c61fde9e88d64d4f5a2a80"
+  }
+}

@@ -1,0 +1,145 @@
+{
+  "name": "01-WhatsApp-Appointment-Reminder",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "hours", "hoursInterval": 6 }
+          ]
+        }
+      },
+      "id": "rem-sched",
+      "name": "Reminder Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/leads?select=id,name,phone,email,company,status,appointment_booked,reminders_sent,last_reminder_at&status=in.(hot,warm,qualified)&appointment_booked=eq.false&reminders_sent=lt.3&order=created_at.asc&limit=50",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Accept", "value": "application/json" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "rem-get",
+      "name": "Get Leads to Remind",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const lead = $json;\nconst to = String(lead.phone || '').replace(/[^0-9+]/g, '');\nconst first = (lead.name || 'there').trim().split(/\\s+/)[0];\nconst company = lead.company || '';\nconst template = '{{ $env.WHATSAPP_TEMPLATE_NAME }}';\nconst params = [{ type: 'text', text: first }];\nif (company) params.push({ type: 'text', text: company });\nreturn [{\n  json: {\n    lead_id: lead.id,\n    reminders_sent: lead.reminders_sent || 0,\n    to,\n    messaging_product: 'whatsapp',\n    recipient_type: 'individual',\n    type: 'template',\n    template: { name: template, language: { code: 'en' }, components: params.length ? [{ type: 'body', parameters: params }] : [] }\n  }\n}];"
+      },
+      "id": "rem-build",
+      "name": "Build Reminder Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v18.0/{{ $env.WHATSAPP_PHONE_NUMBER_ID }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{ $env.WHATSAPP_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ messaging_product: $json.messaging_product, recipient_type: $json.recipient_type, to: $json.to, type: $json.type, template: $json.template }) }}",
+        "options": {}
+      },
+      "id": "rem-send",
+      "name": "Send Reminder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput",
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/outreach_log",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ lead_id: $('Build Reminder Payload').item.json.lead_id, channel: 'whatsapp', status: 'sent', message_content: 'Reminder: ' + $('Build Reminder Payload').item.json.template.name, meta: { reminder_number: $('Build Reminder Payload').item.json.reminders_sent + 1 } }) }}",
+        "options": {}
+      },
+      "id": "rem-log",
+      "name": "Log Reminder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 0]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "{{ $env.SUPABASE_URL }}/rest/v1/leads?id=eq.{{ $('Build Reminder Payload').item.json.lead_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ reminders_sent: $('Build Reminder Payload').item.json.reminders_sent + 1, last_reminder_at: new Date().toISOString() }) }}",
+        "options": {}
+      },
+      "id": "rem-upd",
+      "name": "Update Reminder Counter",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 0]
+    }
+  ],
+  "connections": {
+    "Reminder Schedule": {
+      "main": [[{ "node": "Get Leads to Remind", "type": "main", "index": 0 }]]
+    },
+    "Get Leads to Remind": {
+      "main": [[{ "node": "Build Reminder Payload", "type": "main", "index": 0 }]]
+    },
+    "Build Reminder Payload": {
+      "main": [[{ "node": "Send Reminder", "type": "main", "index": 0 }]]
+    },
+    "Send Reminder": {
+      "main": [[{ "node": "Log Reminder", "type": "main", "index": 0 }]]
+    },
+    "Log Reminder": {
+      "main": [[{ "node": "Update Reminder Counter", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ade94e3f132fc6ef7362a4b14a7cb35cc623a83dd7c61fde9e88d64d4f5a2a80"
+  }
+}

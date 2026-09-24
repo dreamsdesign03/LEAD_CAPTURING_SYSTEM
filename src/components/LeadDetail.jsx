@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   SOURCE_LABELS,
   STATUS_META,
+  appointmentMeta,
   fetchLeadDetail,
   formatDate,
   scoreColor,
@@ -79,6 +80,11 @@ function LeadDetailBody({ data, onClose }) {
             </span>
             <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${meta?.color ?? ''}`}>
               {meta?.label ?? lead.status}
+            </span>
+            <span
+              className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${appointmentMeta(lead.appointment_booked).color}`}
+            >
+              Appointment {appointmentMeta(lead.appointment_booked).label}
             </span>
             <span className="text-xs text-slate-400">Added {formatDate(lead.created_at)}</span>
           </div>

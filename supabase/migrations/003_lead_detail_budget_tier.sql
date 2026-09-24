@@ -18,4 +18,4 @@ UPDATE public.leads SET status = 'hot' WHERE status = 'qualified';
 
 ALTER TABLE public.leads DROP CONSTRAINT IF EXISTS leads_status_check;
 ALTER TABLE public.leads ADD CONSTRAINT leads_status_check
-  CHECK (status IN ('new','hot','warm','cold','contacted','responded','converted','unqualified'));
+  CHECK (status IN ('new','hot','warm','cold','qualified','contacted','responded','converted','unqualified'));

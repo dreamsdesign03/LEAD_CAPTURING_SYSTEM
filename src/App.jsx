@@ -88,7 +88,7 @@ export default function App() {
                   )}
                 </div>
                 <ul className="mt-3 space-y-2">
-                  {['converted', 'hot', 'warm', 'contacted', 'responded', 'new', 'cold'].map((s) => {
+                  {['converted', 'qualified', 'hot', 'warm', 'contacted', 'responded', 'new', 'cold'].map((s) => {
                     const count = leads.filter((l) => l.status === s).length
                     const pct = leads.length ? Math.round((count / leads.length) * 100) : 0
                     return (
