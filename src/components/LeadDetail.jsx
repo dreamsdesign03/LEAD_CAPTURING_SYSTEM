@@ -111,19 +111,26 @@ function LeadDetailBody({ data, onClose }) {
             </p>
           ) : (
             <ul className="space-y-2">
-              {outreach.map((o) => (
-                <li key={o.id} className="rounded-lg border border-slate-200 p-3">
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="font-medium text-slate-700">{CHANNEL_LABELS[o.channel] ?? o.channel}</span>
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">{o.status}</span>
-                    <span className="ml-auto text-xs text-slate-400">{formatDate(o.sent_at)}</span>
-                  </div>
-                  {o.message_content && (
-                    <p className="mt-1.5 line-clamp-2 text-xs text-slate-500">{o.message_content}</p>
-                  )}
-                </li>
-              ))}
-            </ul>
+                  {outreach.map((o) => (
+                    <li key={o.id} className="rounded-lg border border-slate-200 p-3">
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="font-medium text-slate-700">{CHANNEL_LABELS[o.channel] ?? o.channel}</span>
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">{o.status}</span>
+                        {o.meta?.template && (
+                          <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs text-indigo-600">
+                            {o.meta.template}
+                          </span>
+                        )}
+                        <span className="ml-auto text-xs text-slate-400">{formatDate(o.sent_at)}</span>
+                      </div>
+                      {o.message_content && (
+                        <p className="mt-2 whitespace-pre-line text-xs leading-relaxed text-slate-600">
+                          {o.message_content}
+                        </p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
           )}
         </section>
 

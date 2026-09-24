@@ -446,6 +446,16 @@
     },
     {
       "parameters": {
+        "jsCode": "const body = $('Universal Lead Webhook').item.json.body;\nconst name = String((body && body.name) || '').trim();\nconst company = String((body && body.company) || '').trim();\nconst message = [\n  'Welcome to Dreamsdesign',\n  'Hi ' + name + '! 👋',\n  'Thank you for reaching out to Dreamsdesign! ✅',\n  'Your request for ' + company + ' has been received.',\n  'Krishna Puranik, our Founder & MD, would love to connect with you personally.',\n  '',\n  '📅 Book your free 30-minute call with Krishna directly:',\n  'https://calendly.com/shahmansi1107/30min',\n  '',\n  'On the call we will:',\n  '✔️ Understand your business goals',\n  '✔️ Show you exactly how we can help',\n  '✔️ Give you a clear growth roadmap',\n  '',\n  'No obligation. No sales pressure. Just honest advice from 25 years of experience.',\n  '',\n  '💬 Any questions before the call? Just reply here.',\n  '',\n  'Krishna Puranik',\n  'Founder & MD, Dreamsdesign',\n  '🌐 dreamsdesign.in',\n  '📞 +91 9377756660'\n].join('\\n');\nreturn [{ json: { lead_id: $('Parse AI Response').item.json.lead_id, channel: 'whatsapp', status: 'sent', message_content: message, meta: { appointment_booked: false, template: '{{ $env.WHATSAPP_TEMPLATE_NAME }}' } } }];"
+      },
+      "id": "wh-msg-001",
+      "name": "Build WhatsApp Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1800, -432]
+    },
+    {
+      "parameters": {
         "method": "POST",
         "url": "={{ $env.SUPABASE_URL }}/rest/v1/outreach_log",
         "sendHeaders": true,
@@ -459,14 +469,14 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ lead_id: $('Parse AI Response').item.json.lead_id, channel: 'whatsapp', status: 'sent', message_content: 'Template: {{ $env.WHATSAPP_TEMPLATE_NAME }}', meta: { appointment_booked: false } }) }}",
+        "jsonBody": "={{ JSON.stringify({ lead_id: $('Build WhatsApp Message').item.json.lead_id, channel: 'whatsapp', status: 'sent', message_content: $('Build WhatsApp Message').item.json.message_content, meta: $('Build WhatsApp Message').item.json.meta }) }}",
         "options": {}
       },
       "id": "wh-log-001",
       "name": "Log WhatsApp Outreach",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1936, -528]
+      "position": [2020, -432]
     }
   ],
   "connections": {
@@ -534,6 +544,9 @@
       "main": [[{ "node": "Hot or Warm?", "type": "main", "index": 0 }]]
     },
     "HTTP Request2": {
+      "main": [[{ "node": "Build WhatsApp Message", "type": "main", "index": 0 }]]
+    },
+    "Build WhatsApp Message": {
       "main": [[{ "node": "Log WhatsApp Outreach", "type": "main", "index": 0 }]]
     },
     "Log WhatsApp Outreach": {

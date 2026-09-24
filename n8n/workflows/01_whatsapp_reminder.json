@@ -73,6 +73,16 @@
     },
     {
       "parameters": {
+        "jsCode": "const lead = $('Get Leads to Remind').item.json;\nconst name = String((lead && lead.name) || 'there').trim();\nconst company = String((lead && lead.company) || '').trim();\nconst message = [\n  'Hi ' + name + ',',\n  '',\n  'You reached out to Dreamsdesign' + (company ? ' for ' + company : '') + ' - but haven\\'t booked your free 30-min call with Krishna Puranik (Founder & MD) yet.',\n  '',\n  '📅 Grab a slot here:',\n  'https://calendly.com/shahmansi1107/30min'\n].join('\\n');\nreturn [{ json: { lead_id: lead.id, channel: 'whatsapp', status: 'sent', message_content: message, meta: { reminder_number: $('Build Reminder Payload').item.json.reminders_sent + 1, template: '{{ $env.WHATSAPP_TEMPLATE_NAME }}' } } }];"
+      },
+      "id": "rem-msg",
+      "name": "Build Reminder Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [770, 0]
+    },
+    {
+      "parameters": {
         "method": "POST",
         "url": "={{ $env.SUPABASE_URL }}/rest/v1/outreach_log",
         "sendHeaders": true,
@@ -86,14 +96,14 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ lead_id: $('Build Reminder Payload').item.json.lead_id, channel: 'whatsapp', status: 'sent', message_content: 'Reminder: ' + $('Build Reminder Payload').item.json.template.name, meta: { reminder_number: $('Build Reminder Payload').item.json.reminders_sent + 1 } }) }}",
+        "jsonBody": "={{ JSON.stringify({ lead_id: $('Build Reminder Message').item.json.lead_id, channel: 'whatsapp', status: 'sent', message_content: $('Build Reminder Message').item.json.message_content, meta: $('Build Reminder Message').item.json.meta }) }}",
         "options": {}
       },
       "id": "rem-log",
       "name": "Log Reminder",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [880, 0]
+      "position": [990, 0]
     },
     {
       "parameters": {
@@ -131,6 +141,9 @@
       "main": [[{ "node": "Send Reminder", "type": "main", "index": 0 }]]
     },
     "Send Reminder": {
+      "main": [[{ "node": "Build Reminder Message", "type": "main", "index": 0 }]]
+    },
+    "Build Reminder Message": {
       "main": [[{ "node": "Log Reminder", "type": "main", "index": 0 }]]
     },
     "Log Reminder": {
