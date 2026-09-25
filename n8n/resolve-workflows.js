@@ -28,6 +28,8 @@ const tokens = {
   VAPI_URL: secrets.VAPI_URL,
   WHATSAPP_TOKEN: secrets.WHATSAPP_TOKEN,
   WHATSAPP_PHONE_NUMBER_ID: secrets.WHATSAPP_PHONE_NUMBER_ID,
+  WHATSAPP_VERIFY_TOKEN: secrets.WHATSAPP_VERIFY_TOKEN,
+  WHATSAPP_TEMPLATE_NAME: secrets.WHATSAPP_TEMPLATE_NAME,
 }
 
 /** Processes any string value: resolves {{ $env.X }} braces, then bare $env.X */

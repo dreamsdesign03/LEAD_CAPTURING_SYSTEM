@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { fetchLeads, supabase } from './lib/supabase'
 import StatsCards from './components/StatsCards'
 import SourceChart from './components/SourceChart'
 import LeadsTable from './components/LeadsTable'
 import LeadDetail from './components/LeadDetail'
+import WhatsAppPanel from './components/WhatsAppPanel'
 
 export default function App() {
   const [leads, setLeads] = useState([])
@@ -11,6 +12,8 @@ export default function App() {
   const [error, setError] = useState(null)
   const [lastRefresh, setLastRefresh] = useState(null)
   const [selectedLeadId, setSelectedLeadId] = useState(null)
+  const [chatLeadId, setChatLeadId] = useState(null)
+  const panelRef = useRef(null)
 
   const refresh = useCallback(async () => {
     try {
@@ -39,6 +42,12 @@ export default function App() {
       supabase.removeChannel(channel)
     }
   }, [refresh])
+
+  useEffect(() => {
+    if (chatLeadId && panelRef.current) {
+      panelRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [chatLeadId])
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -112,12 +121,23 @@ export default function App() {
               </div>
             </div>
 
-            <LeadsTable leads={leads} onSelect={setSelectedLeadId} />
+            <div className="rounded-xl border border-slate-200 bg-white p-1" ref={panelRef}>
+              <WhatsAppPanel preselectedLeadId={chatLeadId} />
+            </div>
+
+            <LeadsTable leads={leads} onSelect={setSelectedLeadId} onOpenChat={setChatLeadId} />
           </>
         )}
       </main>
 
-      <LeadDetail leadId={selectedLeadId} onClose={() => setSelectedLeadId(null)} />
+      <LeadDetail
+        leadId={selectedLeadId}
+        onClose={() => setSelectedLeadId(null)}
+        onOpenChat={(id) => {
+          setSelectedLeadId(null)
+          setChatLeadId(id)
+        }}
+      />
     </div>
   )
 }

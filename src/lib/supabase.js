@@ -102,3 +102,90 @@ export async function fetchLeadDetail(id) {
     followups: followups.data ?? [],
   }
 }
+
+export async function fetchLeadById(id) {
+  const { data, error } = await supabase
+    .from('leads_with_score')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle()
+  if (error) throw error
+  return data
+}
+
+export async function fetchWhatsAppConversations() {
+  const { data, error } = await supabase
+    .from('whatsapp_conversations')
+    .select('*')
+    .order('last_activity', { ascending: false })
+    .limit(200)
+  if (error) throw error
+  return data ?? []
+}
+
+export async function fetchWhatsAppChat(leadId) {
+  const [msgs, outreach] = await Promise.all([
+    supabase
+      .from('whatsapp_messages')
+      .select('*')
+      .eq('lead_id', leadId)
+      .order('sent_at', { ascending: true }),
+    supabase
+      .from('outreach_log')
+      .select('*')
+      .eq('lead_id', leadId)
+      .eq('channel', 'whatsapp')
+      .order('sent_at', { ascending: true }),
+  ])
+  for (const r of [msgs, outreach]) if (r.error) throw r.error
+  const chatMsgs = (msgs.data ?? []).map((m) => ({
+    key: `wm:${m.id}`,
+    id: m.id,
+    direction: m.direction,
+    content: m.content,
+    template: m.template_name,
+    status: m.status,
+    sentAt: m.sent_at,
+  }))
+  const chatOutreach = (outreach.data ?? []).map((o) => ({
+    key: `ol:${o.id}`,
+    id: o.id,
+    direction: 'outbound',
+    content: o.message_content,
+    template: o.meta?.template ?? null,
+    status: o.status,
+    sentAt: o.sent_at,
+  }))
+  return [...chatMsgs, ...chatOutreach].sort(
+    (a, b) => new Date(a.sentAt) - new Date(b.sentAt)
+  )
+}
+
+export async function markWhatsAppThreadRead(leadId) {
+  const { error } = await supabase
+    .from('whatsapp_messages')
+    .update({ read_at: new Date().toISOString() })
+    .eq('lead_id', leadId)
+    .eq('direction', 'inbound')
+    .is('read_at', null)
+  if (error) throw error
+}
+
+export async function sendWhatsAppReply({ leadId, phone, message, templateName, templateParams }) {
+  const url = import.meta.env.VITE_WHATSAPP_SEND_URL
+  if (!url) throw new Error('WhatsApp send URL not configured. Set VITE_WHATSAPP_SEND_URL in .env')
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      lead_id: leadId,
+      phone,
+      message,
+      template_name: templateName,
+      template_params: templateParams,
+    }),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok || data.error) throw new Error(data.error || `WhatsApp send failed (${res.status})`)
+  return data
+}

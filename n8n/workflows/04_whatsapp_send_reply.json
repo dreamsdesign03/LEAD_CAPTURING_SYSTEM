@@ -1,0 +1,156 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "send-whatsapp-reply",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "wa-send-webhook",
+      "name": "Send WhatsApp Reply",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-1600, -240],
+      "webhookId": "send-whatsapp-reply"
+    },
+    {
+      "parameters": {
+        "jsCode": "const req = $json;\nconst phone = String(req.phone || '').replace(/\\D/g, '');\nconst payload = {\n  messaging_product: 'whatsapp',\n  recipient_type: 'individual',\n  to: phone\n};\nif (req.template_name) {\n  payload.type = 'template';\n  payload.template = {\n    name: req.template_name,\n    language: { code: 'en' },\n    components: [{\n      type: 'body',\n      parameters: (req.template_params || []).map(t => ({ type: 'text', text: String(t) }))\n    }]\n  };\n} else {\n  payload.type = 'text';\n  payload.text = { preview_url: false, body: String(req.message || '') };\n}\nreturn [{ json: payload }];"
+      },
+      "id": "wa-build-payload",
+      "name": "Build Meta Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1360, -240]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v18.0/{{ $env.WHATSAPP_PHONE_NUMBER_ID }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.WHATSAPP_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('Build Meta Payload').item.json) }}",
+        "options": {}
+      },
+      "id": "wa-send-meta",
+      "name": "Send via Meta",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "position": [-1120, -240]
+    },
+    {
+      "parameters": {
+        "jsCode": "const req = $('Send WhatsApp Reply').item.json;\nconst isTemplate = Boolean(req.template_name);\nconst metaResp = $json;\nreturn [{\n  json: {\n    lead_id: req.lead_id || null,\n    phone: req.phone || null,\n    direction: 'outbound',\n    content: req.message || ('[Template: ' + req.template_name + ']'),\n    template_name: req.template_name || null,\n    wa_message_id: metaResp?.messages?.[0]?.id || null,\n    status: 'sent',\n    sent_at: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "wa-msg-record",
+      "name": "Build Message Record",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-880, -240]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/whatsapp_messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ lead_id: $('Build Message Record').item.json.lead_id, phone: $('Build Message Record').item.json.phone, direction: 'outbound', content: $('Build Message Record').item.json.content, template_name: $('Build Message Record').item.json.template_name, wa_message_id: $('Build Message Record').item.json.wa_message_id, status: 'sent', sent_at: $('Build Message Record').item.json.sent_at }) }}",
+        "options": {}
+      },
+      "id": "wa-insert-sent",
+      "name": "Save Sent Message",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-640, -240]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/outreach_log",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ lead_id: $('Build Message Record').item.json.lead_id, channel: 'whatsapp', status: 'sent', message_content: $('Build Message Record').item.json.content, meta: { template: $('Build Message Record').item.json.template_name, manual: true, wa_message_id: $('Build Message Record').item.json.wa_message_id } }) }}",
+        "options": {}
+      },
+      "id": "wa-log-outreach",
+      "name": "Log Outreach",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-400, -240]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, message_id: $('Build Message Record').item.json.wa_message_id }) }}",
+        "options": {
+          "responseHeaders": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        }
+      },
+      "id": "wa-respond-sent",
+      "name": "Respond Sent",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [-160, -240]
+    }
+  ],
+  "connections": {
+    "Send WhatsApp Reply": {
+      "main": [[{ "node": "Build Meta Payload", "type": "main", "index": 0 }]]
+    },
+    "Build Meta Payload": {
+      "main": [[{ "node": "Send via Meta", "type": "main", "index": 0 }]]
+    },
+    "Send via Meta": {
+      "main": [[{ "node": "Build Message Record", "type": "main", "index": 0 }]]
+    },
+    "Build Message Record": {
+      "main": [[{ "node": "Save Sent Message", "type": "main", "index": 0 }]]
+    },
+    "Save Sent Message": {
+      "main": [[{ "node": "Log Outreach", "type": "main", "index": 0 }]]
+    },
+    "Log Outreach": {
+      "main": [[{ "node": "Respond Sent", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

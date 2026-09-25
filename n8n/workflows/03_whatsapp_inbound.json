@@ -1,0 +1,282 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": ["GET", "POST"],
+        "path": "whatsapp-inbound",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wa-in-webhook",
+      "name": "WhatsApp Inbound",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-1600, -320],
+      "webhookId": "whatsapp-inbound",
+      "settings": {
+        "multipleMethods": true
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "wa-cond-mode",
+              "leftValue": "={{ $json.query['hub.mode'] }}",
+              "rightValue": "subscribe",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "wa-cond-token",
+              "leftValue": "={{ $json.query['hub.verify_token'] }}",
+              "rightValue": "={{ $env.WHATSAPP_VERIFY_TOKEN }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "wa-verif-if",
+      "name": "Is Verification?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-1360, -320]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.query['hub.challenge'] }}",
+        "options": {
+          "responseHeaders": [
+            {
+              "name": "Content-Type",
+              "value": "text/plain"
+            }
+          ]
+        }
+      },
+      "id": "wa-respond-challenge",
+      "name": "Respond Challenge",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [-1120, -448]
+    },
+    {
+      "parameters": {
+        "jsCode": "const entry = $json.entry?.[0];\nconst value = entry?.changes?.find(c => c.field === 'messages')?.value;\nif (!value) return [];\nconst msg = value.messages?.[0];\nif (!msg || msg.type === 'unknown') return [];\nconst text =\n  msg.text?.body\n  || msg.interactive?.button_reply?.title\n  || msg.interactive?.list_reply?.title\n  || msg.image?.caption\n  || '';\nreturn [{\n  json: {\n    sender_phone: String(msg.from || '').replace(/^\\+/,''),\n    message_text: String(text).trim(),\n    message_type: msg.type || 'text',\n    wa_message_id: msg.id || null,\n    sent_at: new Date(Number(msg.timestamp) * 1000).toISOString(),\n    sender_name: value.contacts?.[0]?.profile?.name || ''\n  }\n}];"
+      },
+      "id": "wa-parse-meta",
+      "name": "Parse Meta Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1120, -192]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/rpc/find_lead_by_whatsapp",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ p_phone: $json.sender_phone }) }}",
+        "options": {}
+      },
+      "id": "wa-find-lead",
+      "name": "Find Lead by Phone",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-880, -192],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "wa-cond-lead",
+              "leftValue": "={{ $json.lead_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "wa-lead-found",
+      "name": "Lead Found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-640, -192]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/whatsapp_messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ lead_id: $('Find Lead by Phone').item.json.lead_id, phone: $('Parse Meta Message').item.json.sender_phone, direction: 'inbound', content: $('Parse Meta Message').item.json.message_text, wa_message_id: $('Parse Meta Message').item.json.wa_message_id, status: 'received', sent_at: $('Parse Meta Message').item.json.sent_at }) }}",
+        "options": {}
+      },
+      "id": "wa-insert-msg",
+      "name": "Save Inbound Message",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-400, -320]
+    },
+    {
+      "parameters": {
+        "jsCode": "const p = $('Parse Meta Message').item.json;\nconst last10 = String(p.sender_phone).slice(-10);\nconst name = p.sender_name || ('WhatsApp ' + last10);\nreturn [{ json: { name, phone: '+' + String(p.sender_phone), source: 'whatsapp' } }];"
+      },
+      "id": "wa-build-lead",
+      "name": "Build New Lead",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-400, -64]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/leads",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ name: $json.name, phone: $json.phone, source: 'whatsapp' }) }}",
+        "options": {}
+      },
+      "id": "wa-create-lead",
+      "name": "Create Lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-160, -64]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/whatsapp_messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ lead_id: $('Create Lead').item.json[0].id, phone: $('Parse Meta Message').item.json.sender_phone, direction: 'inbound', content: $('Parse Meta Message').item.json.message_text, wa_message_id: $('Parse Meta Message').item.json.wa_message_id, status: 'received', sent_at: $('Parse Meta Message').item.json.sent_at }) }}",
+        "options": {}
+      },
+      "id": "wa-insert-msg-new",
+      "name": "Save Inbound Message (new lead)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [96, -64]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "ok",
+        "options": {}
+      },
+      "id": "wa-respond-ok",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [400, -192]
+    }
+  ],
+  "connections": {
+    "WhatsApp Inbound": {
+      "main": [
+        [{ "node": "Is Verification?", "type": "main", "index": 0 }],
+        [{ "node": "Is Verification?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Is Verification?": {
+      "main": [
+        [{ "node": "Respond Challenge", "type": "main", "index": 0 }],
+        [{ "node": "Parse Meta Message", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse Meta Message": {
+      "main": [[{ "node": "Find Lead by Phone", "type": "main", "index": 0 }]]
+    },
+    "Find Lead by Phone": {
+      "main": [[{ "node": "Lead Found?", "type": "main", "index": 0 }]]
+    },
+    "Lead Found?": {
+      "main": [
+        [{ "node": "Save Inbound Message", "type": "main", "index": 0 }],
+        [{ "node": "Build New Lead", "type": "main", "index": 0 }]
+      ]
+    },
+    "Save Inbound Message": {
+      "main": [[{ "node": "Respond OK", "type": "main", "index": 0 }]]
+    },
+    "Build New Lead": {
+      "main": [[{ "node": "Create Lead", "type": "main", "index": 0 }]]
+    },
+    "Create Lead": {
+      "main": [[{ "node": "Save Inbound Message (new lead)", "type": "main", "index": 0 }]]
+    },
+    "Save Inbound Message (new lead)": {
+      "main": [[{ "node": "Respond OK", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}
