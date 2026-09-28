@@ -12,12 +12,21 @@ export default function LeadsTable({ leads, onSelect, onOpenChat }) {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
+    const normFilterSource = source ? source.toLowerCase().replace(/[\s-]/g, '_') : ''
+    const normFilterStatus = status ? status.toLowerCase().trim() : ''
+
     return leads.filter((l) => {
-      if (source && l.source !== source) return false
-      if (status && l.status !== status) return false
+      if (normFilterSource) {
+        const leadSrc = (l.source || '').toLowerCase().replace(/[\s-]/g, '_')
+        if (leadSrc !== normFilterSource) return false
+      }
+      if (normFilterStatus) {
+        const leadStat = (l.status || '').toLowerCase().trim()
+        if (leadStat !== normFilterStatus) return false
+      }
       if (minScore !== '' && (l.score ?? -1) < Number(minScore)) return false
       if (q) {
-        const hay = [l.name, l.email, l.phone].filter(Boolean).join(' ').toLowerCase()
+        const hay = [l.name, l.email, l.phone, l.company, l.source, l.status].filter(Boolean).join(' ').toLowerCase()
         if (!hay.includes(q)) return false
       }
       return true
