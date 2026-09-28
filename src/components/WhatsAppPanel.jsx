@@ -17,6 +17,28 @@ const TEMPLATES = [
     label: 'Appointment Booking',
     language: 'en_IN',
     params: (c) => [firstName(c), c.company || 'Dreamsdesign'],
+    preview: (c) => `Welcome to Dreamsdesign
+
+Hi ${firstName(c)}! 👋
+Thank you for reaching out to Dreamsdesign! ✅
+Your request for ${c.company || 'Dreamsdesign'} has been received.
+Krishna Puranik, our Founder & MD, would love to connect with you personally.
+
+🗓️ Book your free 30-minute call with Krishna directly:
+https://calendly.com/shahmansi1107/30min
+
+On the call we will:
+✔ Understand your business goals
+✔ Show you exactly how we can help
+✔ Give you a clear growth roadmap
+
+No obligation. No sales pressure. Just honest advice from 25 years of experience.
+
+💬 Any questions before the call? Just reply here.
+
+Krishna Puranik
+Founder & MD, Dreamsdesign
+🌐 dreamsdesign.in`,
   },
 ]
 
@@ -179,10 +201,13 @@ export default function WhatsAppPanel({ preselectedLeadId }) {
     setSending(true)
     try {
       const payload = { leadId: activeLead.lead_id, phone: activePhone }
+      let messageContent = text
       if (isTemplate) {
         payload.templateName = template.name
-        payload.templateLanguage = template.language || 'en_US'
+        payload.templateLanguage = template.language || 'en_IN'
         payload.templateParams = template.params({ name: activeLead.name, company: activeLead.company })
+        messageContent = template.preview ? template.preview({ name: activeLead.name, company: activeLead.company }) : `[Template: ${template.name}]`
+        payload.message = messageContent
       } else {
         payload.message = text
       }
@@ -193,7 +218,7 @@ export default function WhatsAppPanel({ preselectedLeadId }) {
         {
           key: `tmp-${Date.now()}`,
           direction: 'outbound',
-          content: isTemplate ? `[Template: ${template.name}]` : text,
+          content: messageContent,
           template: isTemplate ? template.name : null,
           status: 'sent',
           sentAt: new Date().toISOString(),
