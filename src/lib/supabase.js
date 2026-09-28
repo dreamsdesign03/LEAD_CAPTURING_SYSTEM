@@ -49,7 +49,12 @@ export const APPOINTMENT_META = {
 }
 
 export function appointmentMeta(appointmentBooked) {
-  return appointmentBooked ? APPOINTMENT_META.booked : APPOINTMENT_META.not_booked
+  const isBooked =
+    appointmentBooked === true ||
+    appointmentBooked === 1 ||
+    String(appointmentBooked).toLowerCase() === 'true' ||
+    String(appointmentBooked) === '1'
+  return isBooked ? APPOINTMENT_META.booked : APPOINTMENT_META.not_booked
 }
 
 export function scoreColor(score) {
