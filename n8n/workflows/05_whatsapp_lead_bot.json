@@ -1,0 +1,246 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {}
+      },
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1200,
+        400
+      ],
+      "id": "wa-bot-trigger",
+      "name": "WhatsApp Bot Trigger",
+      "webhookId": "whatsapp-lead-bot-webhook",
+      "credentials": {
+        "whatsAppTriggerApi": {
+          "id": "YP7IKmqUGiVPWlRc",
+          "name": "WhatsApp OAuth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $json;\nlet value = null;\nif (raw.entry && Array.isArray(raw.entry) && raw.entry[0]?.changes?.[0]?.value) {\n  value = raw.entry[0].changes[0].value;\n} else if (raw.value) {\n  value = raw.value;\n} else {\n  value = raw;\n}\n\nconst messages = value.messages || raw.messages || [raw];\nconst msg = Array.isArray(messages) ? messages[0] : messages;\n\nconst phone = String(msg.from || value.from || raw.from || '').trim();\nconst text = String(msg.text?.body || msg.body || '').trim();\nconst senderName = value.contacts?.[0]?.profile?.name || raw.contacts?.[0]?.profile?.name || 'WhatsApp User';\n\nreturn [{\n  json: {\n    phone,\n    text,\n    senderName,\n    rawPayload: raw\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -960,
+        400
+      ],
+      "id": "wa-bot-parse",
+      "name": "Parse Inbound Text"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/rpc/find_lead_by_whatsapp",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ p_phone: $json.phone }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -720,
+        400
+      ],
+      "id": "wa-bot-find-lead",
+      "name": "Find Lead State",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const inbound = $('Parse Inbound Text').item.json;\nconst leadMatch = $('Find Lead State').item.json;\nconst leadId = Array.isArray(leadMatch) ? leadMatch[0]?.lead_id : leadMatch?.lead_id;\n\nconst text = inbound.text;\nconst phone = inbound.phone;\nconst defaultName = inbound.senderName;\n\n// State Machine for Question Steps\nlet isComplete = false;\nlet replyText = '';\nlet leadPayload = null;\n\nif (text.toLowerCase().includes('reset') || text.toLowerCase().includes('start') || text.toLowerCase().includes('hi') || text.toLowerCase().includes('hello')) {\n  replyText = `Welcome to Dreamsdesign Lead Assistant! 👋\\n\\nLet's get your project registered in 4 quick steps.\\n\\n1️⃣ What is your full name?`;\n} else {\n  // Default payload construction when message received\n  isComplete = true;\n  leadPayload = {\n    name: defaultName || 'WhatsApp Lead',\n    email: `${phone.replace(/\\D/g, '')}@whatsapp.temp`,\n    phone: phone.startsWith('+') ? phone : `+${phone}`,\n    source: 'whatsapp',\n    company: 'WhatsApp Inquiry',\n    role: 'Prospect',\n    budget: 'Not decided',\n    message: text\n  };\n  replyText = `Thank you ${defaultName}! ✅ Your inquiry has been received. Our team will get back to you shortly.`;\n}\n\nreturn [{\n  json: {\n    phone,\n    replyText,\n    isComplete,\n    leadPayload\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -480,
+        400
+      ],
+      "id": "wa-bot-logic",
+      "name": "Bot Conversational Logic"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v18.0/{{ $env.WHATSAPP_PHONE_NUMBER_ID }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.WHATSAPP_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  messaging_product: 'whatsapp',\n  recipient_type: 'individual',\n  to: $json.phone,\n  type: 'text',\n  text: { preview_url: false, body: $json.replyText }\n}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -240,
+        300
+      ],
+      "id": "wa-bot-reply",
+      "name": "Send WhatsApp Bot Reply"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "complete-check",
+              "leftValue": "={{ $json.isComplete }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        500
+      ],
+      "id": "wa-bot-if-complete",
+      "name": "Is Complete?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n.srv891967.hstgr.cloud/webhook/universal-lead",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.leadPayload) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        500
+      ],
+      "id": "wa-bot-post-webhook",
+      "name": "Post to Universal Lead Webhook"
+    }
+  ],
+  "connections": {
+    "WhatsApp Bot Trigger": {
+      "main": [
+        [
+          {
+            "node": "Parse Inbound Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Inbound Text": {
+      "main": [
+        [
+          {
+            "node": "Find Lead State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Lead State": {
+      "main": [
+        [
+          {
+            "node": "Bot Conversational Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bot Conversational Logic": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Bot Reply",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Is Complete?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Complete?": {
+      "main": [
+        [
+          {
+            "node": "Post to Universal Lead Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}
