@@ -151,6 +151,13 @@ export default function WhatsAppPanel({ preselectedLeadId }) {
   }, [refreshConvs])
 
   useEffect(() => {
+    if (!selectedId && convs.length > 0 && !handledPreselect.current) {
+      setSelectedId(convs[0].lead_id)
+      refreshChat(convs[0].lead_id)
+    }
+  }, [convs, selectedId, refreshChat])
+
+  useEffect(() => {
     if (preselectedLeadId && preselectedLeadId !== handledPreselect.current) {
       handledPreselect.current = preselectedLeadId
       selectLead(preselectedLeadId)
@@ -162,10 +169,18 @@ export default function WhatsAppPanel({ preselectedLeadId }) {
       .channel('wa-panel-live')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'whatsapp_messages' },
+        { event: '*', schema: 'public', table: 'leads' },
         () => {
           refreshConvs()
-          if (selectedId) {
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'whatsapp_messages' },
+        (payload) => {
+          refreshConvs()
+          const affectedId = payload.new?.lead_id || payload.old?.lead_id
+          if (selectedId && (!affectedId || affectedId === selectedId)) {
             refreshChat(selectedId)
             markWhatsAppThreadRead(selectedId).catch(() => {})
           }
@@ -174,8 +189,12 @@ export default function WhatsAppPanel({ preselectedLeadId }) {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'outreach_log' },
-        () => {
-          if (selectedId) refreshChat(selectedId)
+        (payload) => {
+          refreshConvs()
+          const affectedId = payload.new?.lead_id || payload.old?.lead_id
+          if (selectedId && (!affectedId || affectedId === selectedId)) {
+            refreshChat(selectedId)
+          }
         }
       )
       .subscribe()
