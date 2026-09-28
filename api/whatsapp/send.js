@@ -63,26 +63,36 @@ export default async function handler(req, res) {
     let metaResData = {};
     let waMessageId = null;
 
-    // If WhatsApp credentials are set, post to Meta Cloud API
-    if (token && phoneNumberId) {
-      const metaRes = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
+    if (!token || !phoneNumberId) {
+      console.error('[WhatsApp Send API] WHATSAPP_TOKEN or WHATSAPP_PHONE_NUMBER_ID missing in environment variables.');
+      return res.status(500).json({
+        error: 'WhatsApp API credentials missing. Please add WHATSAPP_TOKEN and WHATSAPP_PHONE_NUMBER_ID to Vercel Environment Variables.'
       });
-      metaResData = await metaRes.json().catch(() => ({}));
-      if (!metaRes.ok || metaResData.error) {
-        console.error('[WhatsApp Send API] Meta API error:', metaResData);
-        throw new Error(metaResData.error?.message || `Meta WhatsApp API error (${metaRes.status})`);
-      }
-      waMessageId = metaResData.messages?.[0]?.id || null;
-    } else {
-      console.warn('[WhatsApp Send API] WHATSAPP_TOKEN or WHATSAPP_PHONE_NUMBER_ID not set. Mocking send.');
-      waMessageId = `mock_wamid_${Date.now()}`;
     }
+
+    // Post to Meta Cloud API
+    const metaRes = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    metaResData = await metaRes.json().catch(() => ({}));
+    console.log('[WhatsApp Send API] Meta response:', JSON.stringify(metaResData, null, 2));
+
+    if (!metaRes.ok || metaResData.error) {
+      const errMsg = metaResData.error?.message || metaResData.error?.error_user_msg || `Meta WhatsApp API error (${metaRes.status})`;
+      console.error('[WhatsApp Send API] Meta API Error:', metaResData.error);
+      return res.status(metaRes.status >= 400 && metaRes.status < 600 ? metaRes.status : 500).json({
+        error: errMsg,
+        meta_error: metaResData.error
+      });
+    }
+
+    waMessageId = metaResData.messages?.[0]?.id || null;
 
     // Save outbound message in Supabase
     if (supabaseUrl && supabaseKey && lead_id) {
