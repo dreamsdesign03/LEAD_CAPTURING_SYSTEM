@@ -180,6 +180,7 @@ export default function WhatsAppPanel({ preselectedLeadId }) {
       const payload = { leadId: activeLead.lead_id, phone: activePhone }
       if (isTemplate) {
         payload.templateName = template.name
+        payload.templateLanguage = template.language || 'en_US'
         payload.templateParams = template.params({ name: activeLead.name, company: activeLead.company })
       } else {
         payload.message = text

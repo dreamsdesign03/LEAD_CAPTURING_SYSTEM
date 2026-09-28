@@ -22,7 +22,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { lead_id, phone, message, template_name, template_params } = req.body || {};
+    const { lead_id, phone, message, template_name, template_params, template_language, languageCode } = req.body || {};
 
     if (!phone) {
       return res.status(400).json({ error: 'Phone number is required' });
@@ -40,16 +40,17 @@ export default async function handler(req, res) {
     };
 
     if (template_name) {
+      const resolvedLang = template_language || languageCode || 'en_US';
       payload.type = 'template';
       payload.template = {
         name: template_name,
-        language: { code: 'en' },
-        components: [
+        language: { code: resolvedLang },
+        components: (template_params && template_params.length > 0) ? [
           {
             type: 'body',
-            parameters: (template_params || []).map((t) => ({ type: 'text', text: String(t) }))
+            parameters: template_params.map((t) => ({ type: 'text', text: String(t) }))
           }
-        ]
+        ] : []
       };
     } else {
       const bodyText = String(message || '').trim();

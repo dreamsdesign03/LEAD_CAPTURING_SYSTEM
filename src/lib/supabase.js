@@ -171,7 +171,7 @@ export async function markWhatsAppThreadRead(leadId) {
   if (error) throw error
 }
 
-export async function sendWhatsAppReply({ leadId, phone, message, templateName, templateParams }) {
+export async function sendWhatsAppReply({ leadId, phone, message, templateName, templateParams, templateLanguage }) {
   const url = import.meta.env.VITE_WHATSAPP_SEND_URL
   if (!url) throw new Error('WhatsApp send URL not configured. Set VITE_WHATSAPP_SEND_URL in .env')
   const res = await fetch(url, {
@@ -183,6 +183,7 @@ export async function sendWhatsAppReply({ leadId, phone, message, templateName, 
       message,
       template_name: templateName,
       template_params: templateParams,
+      template_language: templateLanguage || 'en_US',
     }),
   })
   const data = await res.json().catch(() => ({}))
