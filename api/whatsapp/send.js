@@ -40,7 +40,7 @@ export default async function handler(req, res) {
     };
 
     if (template_name) {
-      const resolvedLang = template_language || languageCode || 'en_US';
+      const resolvedLang = template_language || languageCode || 'en_IN';
       payload.type = 'template';
       payload.template = {
         name: template_name,

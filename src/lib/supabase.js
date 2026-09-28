@@ -183,7 +183,7 @@ export async function sendWhatsAppReply({ leadId, phone, message, templateName, 
       message,
       template_name: templateName,
       template_params: templateParams,
-      template_language: templateLanguage || 'en_US',
+      template_language: templateLanguage || 'en_IN',
     }),
   })
   const data = await res.json().catch(() => ({}))

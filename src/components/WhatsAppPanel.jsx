@@ -15,6 +15,7 @@ const TEMPLATES = [
   {
     name: 'mansi_lead_demo_appointment_booking',
     label: 'Appointment Booking',
+    language: 'en_IN',
     params: (c) => [firstName(c), c.company || 'Dreamsdesign'],
   },
 ]
