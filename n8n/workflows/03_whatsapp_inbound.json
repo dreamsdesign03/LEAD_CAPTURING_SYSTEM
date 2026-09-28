@@ -2,6 +2,24 @@
   "nodes": [
     {
       "parameters": {
+        "method": "POST",
+        "url": "https://aura-ai-six-beta.vercel.app/api/whatsapp/webhook",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        272,
+        624
+      ],
+      "id": "401b2055-e37e-4f92-bb1e-f06022d5a90d",
+      "name": "Forward to Aura AI1"
+    },
+    {
+      "parameters": {
         "updates": [
           "messages"
         ],
@@ -10,11 +28,11 @@
       "type": "n8n-nodes-base.whatsAppTrigger",
       "typeVersion": 1,
       "position": [
-        432,
-        1344
+        16,
+        816
       ],
-      "id": "c66fffe8-3899-4beb-8613-89879f519b8e",
-      "name": "WhatsApp Trigger",
+      "id": "a7d841f4-22a0-4414-bff9-c8315baa717a",
+      "name": "WhatsApp Trigger1",
       "webhookId": "8a9d50cb-339c-481e-8c16-a4f3acedb53d",
       "credentials": {
         "whatsAppTriggerApi": {
@@ -26,7 +44,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.N8N_URL }}/webhook/universal-lead",
+        "url": "https://lead-capturing-system.vercel.app/api/whatsapp/webhook",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($json) }}",
@@ -35,19 +53,24 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        688,
-        1344
+        272,
+        960
       ],
-      "id": "579f8c01-dacb-4964-88c9-90b9e251c25e",
-      "name": "Forward to Lead Capturing System"
+      "id": "a6ff979f-b555-4270-880a-1eba18b0140d",
+      "name": "Forward to Lead Capturing System1"
     }
   ],
   "connections": {
-    "WhatsApp Trigger": {
+    "WhatsApp Trigger1": {
       "main": [
         [
           {
-            "node": "Forward to Lead Capturing System",
+            "node": "Forward to Aura AI1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Forward to Lead Capturing System1",
             "type": "main",
             "index": 0
           }
