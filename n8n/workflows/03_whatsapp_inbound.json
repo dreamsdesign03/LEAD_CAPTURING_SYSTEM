@@ -10,10 +10,10 @@
       "type": "n8n-nodes-base.whatsAppTrigger",
       "typeVersion": 1,
       "position": [
-        -288,
-        592
+        432,
+        1344
       ],
-      "id": "142a982b-a6f0-4f32-afbf-d5b7c69ae242",
+      "id": "c66fffe8-3899-4beb-8613-89879f519b8e",
       "name": "WhatsApp Trigger",
       "webhookId": "8a9d50cb-339c-481e-8c16-a4f3acedb53d",
       "credentials": {
@@ -25,164 +25,8 @@
     },
     {
       "parameters": {
-        "jsCode": "const raw = $json;\nlet value = null;\nif (raw.entry && Array.isArray(raw.entry) && raw.entry[0]?.changes?.[0]?.value) {\n  value = raw.entry[0].changes[0].value;\n} else if (raw.value) {\n  value = raw.value;\n} else {\n  value = raw;\n}\n\nconst messages = value.messages || raw.messages || [raw];\nconst msg = Array.isArray(messages) ? messages[0] : messages;\n\nconst senderPhone = String(msg.from || value.from || raw.from || '').trim();\nconst cleanDigits = senderPhone.replace(/\\D/g, '');\nconst senderName = value.contacts?.[0]?.profile?.name || raw.contacts?.[0]?.profile?.name || raw.profile_name || 'WhatsApp User';\nconst waMessageId = String(msg.id || msg.wamid || raw.wamid || `wamid_${Date.now()}`);\nconst rawTimestamp = msg.timestamp || raw.timestamp;\n\nlet messageText = '';\nif (msg.text?.body) {\n  messageText = msg.text.body;\n} else if (msg.type === 'text' && typeof msg.text === 'string') {\n  messageText = msg.text;\n} else if (msg.interactive) {\n  messageText = msg.interactive?.button_reply?.title || msg.interactive?.list_reply?.title || '[Interactive Reply]';\n} else if (msg.button) {\n  messageText = msg.button?.text || '[Button Click]';\n} else if (typeof msg.body === 'string') {\n  messageText = msg.body;\n} else {\n  messageText = msg.text?.body || `[${msg.type || 'Media'} Message]`;\n}\n\nconst sentAt = rawTimestamp \n  ? new Date(typeof rawTimestamp === 'number' ? rawTimestamp * 1000 : parseInt(rawTimestamp, 10) * 1000).toISOString()\n  : new Date().toISOString();\n\nreturn [{\n  json: {\n    senderPhone,\n    cleanDigits,\n    senderName,\n    messageText,\n    waMessageId,\n    sentAt,\n    rawPayload: raw\n  }\n}];"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        112,
-        592
-      ],
-      "id": "bf8e09a2-ad2f-43de-99cb-4e946b205814",
-      "name": "Parse Meta Message"
-    },
-    {
-      "parameters": {
         "method": "POST",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/rpc/find_lead_by_whatsapp",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "apikey",
-              "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
-            },
-            {
-              "name": "Authorization",
-              "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ p_phone: $json.senderPhone }) }}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        352,
-        592
-      ],
-      "id": "c71a3912-984b-48aa-b90e-1188173ab123",
-      "name": "Find Lead by Phone",
-      "alwaysOutputData": true
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 1
-          },
-          "conditions": [
-            {
-              "id": "condition-lead-found",
-              "leftValue": "={{ $json.lead_id }}",
-              "rightValue": "",
-              "operator": {
-                "type": "string",
-                "operation": "exists",
-                "singleValue": true
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [
-        592,
-        592
-      ],
-      "id": "993a11bf-811c-4b53-a002-1c23847ab992",
-      "name": "Lead Found?"
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/whatsapp_messages",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "apikey",
-              "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
-            },
-            {
-              "name": "Authorization",
-              "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            },
-            {
-              "name": "Prefer",
-              "value": "return=representation"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  lead_id: $('Lead Found?').item.json.lead_id,\n  phone: $('Parse Meta Message').item.json.senderPhone,\n  direction: 'inbound',\n  content: $('Parse Meta Message').item.json.messageText,\n  wa_message_id: $('Parse Meta Message').item.json.waMessageId,\n  status: 'delivered',\n  sent_at: $('Parse Meta Message').item.json.sentAt\n}) }}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        880,
-        520
-      ],
-      "id": "81711200-a192-411f-8182-38491827bfa1",
-      "name": "Save Inbound Message"
-    },
-    {
-      "parameters": {
-        "jsCode": "const parsed = $('Parse Meta Message').item.json;\nconst formattedPhone = parsed.cleanDigits ? `+${parsed.cleanDigits}` : parsed.senderPhone;\nreturn [{\n  json: {\n    name: parsed.senderName || 'WhatsApp User',\n    phone: formattedPhone,\n    whatsapp: formattedPhone,\n    source: 'whatsapp',\n    status: 'new',\n    raw_data: parsed.rawPayload\n  }\n}];"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        880,
-        680
-      ],
-      "id": "d1788229-3712-4aa8-912b-7c1817bbca91",
-      "name": "Build New Lead"
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/leads",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "apikey",
-              "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
-            },
-            {
-              "name": "Authorization",
-              "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            },
-            {
-              "name": "Prefer",
-              "value": "return=representation"
-            }
-          ]
-        },
+        "url": "={{ $env.N8N_URL }}/webhook/universal-lead",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($json) }}",
@@ -191,50 +35,11 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1120,
-        680
+        688,
+        1344
       ],
-      "id": "78219191-1192-4a00-b617-641571bfbc01",
-      "name": "Create Lead"
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/whatsapp_messages",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "apikey",
-              "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
-            },
-            {
-              "name": "Authorization",
-              "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            },
-            {
-              "name": "Prefer",
-              "value": "return=representation"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  lead_id: Array.isArray($json) ? $json[0].id : $json.id,\n  phone: $('Parse Meta Message').item.json.senderPhone,\n  direction: 'inbound',\n  content: $('Parse Meta Message').item.json.messageText,\n  wa_message_id: $('Parse Meta Message').item.json.waMessageId,\n  status: 'delivered',\n  sent_at: $('Parse Meta Message').item.json.sentAt\n}) }}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        1360,
-        680
-      ],
-      "id": "47a98217-1092-4aa8-b192-01927649bb20",
-      "name": "Save Inbound Message (new lead)"
+      "id": "579f8c01-dacb-4964-88c9-90b9e251c25e",
+      "name": "Forward to Lead Capturing System"
     }
   ],
   "connections": {
@@ -242,69 +47,7 @@
       "main": [
         [
           {
-            "node": "Parse Meta Message",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Parse Meta Message": {
-      "main": [
-        [
-          {
-            "node": "Find Lead by Phone",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Find Lead by Phone": {
-      "main": [
-        [
-          {
-            "node": "Lead Found?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Lead Found?": {
-      "main": [
-        [
-          {
-            "node": "Save Inbound Message",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Build New Lead",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Build New Lead": {
-      "main": [
-        [
-          {
-            "node": "Create Lead",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Create Lead": {
-      "main": [
-        [
-          {
-            "node": "Save Inbound Message (new lead)",
+            "node": "Forward to Lead Capturing System",
             "type": "main",
             "index": 0
           }
