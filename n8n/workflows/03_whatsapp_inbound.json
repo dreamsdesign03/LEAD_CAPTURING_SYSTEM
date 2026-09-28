@@ -2,24 +2,6 @@
   "nodes": [
     {
       "parameters": {
-        "method": "POST",
-        "url": "https://aura-ai-six-beta.vercel.app/api/whatsapp/webhook",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        272,
-        624
-      ],
-      "id": "401b2055-e37e-4f92-bb1e-f06022d5a90d",
-      "name": "Forward to Aura AI1"
-    },
-    {
-      "parameters": {
         "updates": [
           "messages"
         ],
@@ -28,8 +10,8 @@
       "type": "n8n-nodes-base.whatsAppTrigger",
       "typeVersion": 1,
       "position": [
-        16,
-        816
+        -576,
+        864
       ],
       "id": "a7d841f4-22a0-4414-bff9-c8315baa717a",
       "name": "WhatsApp Trigger1",
@@ -43,6 +25,39 @@
     },
     {
       "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "route-check",
+              "leftValue": "={{ $json.value?.metadata?.phone_number_id || $json.metadata?.phone_number_id || '' }}",
+              "rightValue": "890723640798276",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -380,
+        864
+      ],
+      "id": "b1823901-44ab-4122-8921-123456789abc",
+      "name": "Route by Phone ID?"
+    },
+    {
+      "parameters": {
         "method": "POST",
         "url": "https://lead-capturing-system.vercel.app/api/whatsapp/webhook",
         "sendBody": true,
@@ -53,11 +68,29 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        272,
-        960
+        -120,
+        768
       ],
       "id": "a6ff979f-b555-4270-880a-1eba18b0140d",
       "name": "Forward to Lead Capturing System1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://aura-ai-six-beta.vercel.app/api/whatsapp/webhook",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -120,
+        960
+      ],
+      "id": "401b2055-e37e-4f92-bb1e-f06022d5a90d",
+      "name": "Forward to Aura AI1"
     }
   ],
   "connections": {
@@ -65,12 +98,25 @@
       "main": [
         [
           {
-            "node": "Forward to Aura AI1",
+            "node": "Route by Phone ID?",
             "type": "main",
             "index": 0
-          },
+          }
+        ]
+      ]
+    },
+    "Route by Phone ID?": {
+      "main": [
+        [
           {
             "node": "Forward to Lead Capturing System1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Forward to Aura AI1",
             "type": "main",
             "index": 0
           }
