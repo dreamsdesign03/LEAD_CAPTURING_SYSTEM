@@ -121,11 +121,11 @@ export default function App() {
               </div>
             </div>
 
+            <LeadsTable leads={leads} onSelect={setSelectedLeadId} onOpenChat={setChatLeadId} />
+
             <div className="rounded-xl border border-slate-200 bg-white p-1" ref={panelRef}>
               <WhatsAppPanel preselectedLeadId={chatLeadId} />
             </div>
-
-            <LeadsTable leads={leads} onSelect={setSelectedLeadId} onOpenChat={setChatLeadId} />
           </>
         )}
       </main>
