@@ -27,7 +27,7 @@
       "parameters": {
         "operation": "send",
         "phoneNumberId": "890723640798276",
-        "recipientPhoneNumber": "={{ $('WhatsApp Trigger').item.json.messages[0].from }}",
+        "recipientPhoneNumber": "={{ String($('WhatsApp Trigger').item.json.messages[0].from).replace(/^\\+*/, '+') }}",
         "textBody": "={{ $json.output }}",
         "additionalFields": {}
       },
