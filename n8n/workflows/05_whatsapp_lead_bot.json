@@ -10,12 +10,12 @@
       "type": "n8n-nodes-base.whatsAppTrigger",
       "typeVersion": 1,
       "position": [
-        -1200,
-        400
+        -1312,
+        640
       ],
-      "id": "wa-bot-trigger",
-      "name": "WhatsApp Bot Trigger",
-      "webhookId": "whatsapp-lead-bot-webhook",
+      "id": "5c5aac5d-a1b1-4cab-8353-e65a3c799a41",
+      "name": "WhatsApp Trigger",
+      "webhookId": "8a9d50cb-339c-481e-8c16-a4f3acedb53d",
       "credentials": {
         "whatsAppTriggerApi": {
           "id": "YP7IKmqUGiVPWlRc",
@@ -25,129 +25,65 @@
     },
     {
       "parameters": {
-        "jsCode": "const raw = $json;\nlet value = null;\nif (raw.entry && Array.isArray(raw.entry) && raw.entry[0]?.changes?.[0]?.value) {\n  value = raw.entry[0].changes[0].value;\n} else if (raw.value) {\n  value = raw.value;\n} else {\n  value = raw;\n}\n\nconst messages = value.messages || raw.messages || [raw];\nconst msg = Array.isArray(messages) ? messages[0] : messages;\n\nconst phone = String(msg.from || value.from || raw.from || '').trim();\nconst text = String(msg.text?.body || msg.body || '').trim();\nconst senderName = value.contacts?.[0]?.profile?.name || raw.contacts?.[0]?.profile?.name || 'WhatsApp User';\n\nreturn [{\n  json: {\n    phone,\n    text,\n    senderName,\n    rawPayload: raw\n  }\n}];"
+        "operation": "send",
+        "phoneNumberId": "890723640798276",
+        "recipientPhoneNumber": "={{ $('WhatsApp Trigger').item.json.messages[0].from }}",
+        "textBody": "={{ $json.output }}",
+        "additionalFields": {}
       },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
       "position": [
-        -960,
-        400
+        -400,
+        800
       ],
-      "id": "wa-bot-parse",
-      "name": "Parse Inbound Text"
+      "id": "324a0b87-c05d-4684-90a1-e1d1ac56a1e5",
+      "name": "Send message",
+      "webhookId": "9789a5d9-5edd-4dd7-8a48-697df0bd6272",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "VqEPwduW5mcuHnP5",
+          "name": "WhatsApp_Mansi_dd_digital_support"
+        }
+      }
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/rpc/find_lead_by_whatsapp",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "apikey",
-              "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
-            },
-            {
-              "name": "Authorization",
-              "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ p_phone: $json.phone }) }}",
-        "options": {}
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('WhatsApp Trigger').item.json.messages[0].from }}"
       },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
       "position": [
-        -720,
-        400
+        -640,
+        1120
       ],
-      "id": "wa-bot-find-lead",
-      "name": "Find Lead State",
-      "alwaysOutputData": true
+      "id": "27b8a802-6f77-4576-befd-a9d085283051",
+      "name": "Simple Memory"
     },
     {
       "parameters": {
-        "jsCode": "const inbound = $('Parse Inbound Text').item.json;\nconst leadMatch = $('Find Lead State').item.json;\nconst leadId = Array.isArray(leadMatch) ? leadMatch[0]?.lead_id : leadMatch?.lead_id;\n\nconst text = inbound.text;\nconst phone = inbound.phone;\nconst defaultName = inbound.senderName;\n\n// State Machine for Question Steps\nlet isComplete = false;\nlet replyText = '';\nlet leadPayload = null;\n\nif (text.toLowerCase().includes('reset') || text.toLowerCase().includes('start') || text.toLowerCase().includes('hi') || text.toLowerCase().includes('hello')) {\n  replyText = `Welcome to Dreamsdesign Lead Assistant! 👋\\n\\nLet's get your project registered in 4 quick steps.\\n\\n1️⃣ What is your full name?`;\n} else {\n  // Default payload construction when message received\n  isComplete = true;\n  leadPayload = {\n    name: defaultName || 'WhatsApp Lead',\n    email: `${phone.replace(/\\D/g, '')}@whatsapp.temp`,\n    phone: phone.startsWith('+') ? phone : `+${phone}`,\n    source: 'whatsapp',\n    company: 'WhatsApp Inquiry',\n    role: 'Prospect',\n    budget: 'Not decided',\n    message: text\n  };\n  replyText = `Thank you ${defaultName}! ✅ Your inquiry has been received. Our team will get back to you shortly.`;\n}\n\nreturn [{\n  json: {\n    phone,\n    replyText,\n    isComplete,\n    leadPayload\n  }\n}];"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -480,
-        400
-      ],
-      "id": "wa-bot-logic",
-      "name": "Bot Conversational Logic"
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://graph.facebook.com/v18.0/{{ $env.WHATSAPP_PHONE_NUMBER_ID }}/messages",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Authorization",
-              "value": "=Bearer {{ $env.WHATSAPP_TOKEN }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  messaging_product: 'whatsapp',\n  recipient_type: 'individual',\n  to: $json.phone,\n  type: 'text',\n  text: { preview_url: false, body: $json.replyText }\n}) }}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        -240,
-        300
-      ],
-      "id": "wa-bot-reply",
-      "name": "Send WhatsApp Bot Reply"
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 1
-          },
-          "conditions": [
-            {
-              "id": "complete-check",
-              "leftValue": "={{ $json.isComplete }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
         },
         "options": {}
       },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
       "position": [
-        -240,
-        500
+        -784,
+        992
       ],
-      "id": "wa-bot-if-complete",
-      "name": "Is Complete?"
+      "id": "cc038e85-95f1-410d-8b10-8c89c2a573a9",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "F4Rchdkxe56Cm140",
+          "name": "OpenAi account"
+        }
+      }
     },
     {
       "parameters": {
@@ -164,74 +100,129 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json.leadPayload) }}",
-        "options": {}
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "placeholderDefinitions": {
+          "values": [
+            {
+              "name": "name",
+              "description": "Full name of the lead",
+              "type": "string"
+            },
+            {
+              "name": "email",
+              "description": "Email address of the lead",
+              "type": "string"
+            },
+            {
+              "name": "phone",
+              "description": "Phone number of the lead",
+              "type": "string"
+            },
+            {
+              "name": "source",
+              "description": "Lead acquisition source (always 'whatsapp')",
+              "type": "string"
+            },
+            {
+              "name": "company",
+              "description": "Company or business name of the lead",
+              "type": "string"
+            },
+            {
+              "name": "role",
+              "description": "Job role or title of the lead",
+              "type": "string"
+            },
+            {
+              "name": "budget",
+              "description": "Estimated budget tier or range",
+              "type": "string"
+            },
+            {
+              "name": "message",
+              "description": "User requirement or inquiry details",
+              "type": "string"
+            }
+          ]
+        }
       },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
       "position": [
-        0,
-        500
+        -480,
+        1120
       ],
-      "id": "wa-bot-post-webhook",
-      "name": "Post to Universal Lead Webhook"
+      "id": "tool-submit-lead",
+      "name": "Submit Lead Tool"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.messages[0].text.body }}",
+        "options": {
+          "systemMessage": "=You are Krish, a knowledgeable, professional, and friendly Brand Advisor for Dreamsdesign (https://dreamsdesign.in/) - an international award-winning digital growth agency based in Vadodara, India, trusted by 5000+ businesses across 90+ countries for 20+ years.\n\n---\n\nYOUR IDENTITY\n\n- Name: Krish\n- Role: AI Brand Advisor at Dreamsdesign\n- Purpose: Answer questions about Dreamsdesign's services, expertise, portfolio, process, pricing philosophy, and industry knowledge - accurately, warmly, and professionally.\n- You also assist users who want to submit project inquiries, book calls, or request proposals by collecting their details and calling the `Submit Lead Tool`.\n- If a user asks, clarify: \"I'm Krish, Dreamsdesign's AI Brand Advisor - here to answer any questions about our work, services, and expertise!\"\n\n---\n\nPERSONALITY & TONE\n\n- Warm, confident, and consultative - like a senior brand strategist, not a customer support agent\n- Professional but never robotic - use natural, human language\n- Concise and clear - avoid walls of text; break information into readable chunks\n- Enthusiastic about the right things - show genuine pride in Dreamsdesign's work and results\n- Honest - never overpromise or fabricate specific case study numbers unless you know them to be accurate\n- Never pushy or salesy - let the quality of information do the work\n- NEVER use emojis in any response\n- NEVER use the em dash character ( - ) - always use a regular hyphen ( - ) instead\n\n---\n\nAUTOMATED LEAD SUBMISSION TOOL (`Submit Lead Tool`)\n\nWhenever a user expresses interest in starting a project, getting a quote, requesting a consultation, or sharing their contact information:\n1. Collect their details naturally (Name, Email, Phone/WhatsApp, Company, Role, Budget tier, Requirement/Message).\n2. Execute the `Submit Lead Tool` with JSON payload:\n{\n  \"name\": \"<User Name>\",\n  \"email\": \"<User Email>\",\n  \"phone\": \"<User Phone Number>\",\n  \"source\": \"whatsapp\",\n  \"company\": \"<Company Name>\",\n  \"role\": \"<Role/Title>\",\n  \"budget\": \"<Budget Tier>\",\n  \"message\": \"<Requirement details>\"\n}\n3. Once the tool executes, confirm warmly to the user that their request has been submitted to the Dreamsdesign strategy team.\n\n---\n\nDREAMSDESIGN - CORE FACTS (use these accurately)\n\nAGENCY OVERVIEW:\n- Founded: 20+ years ago\n- Headquarters: Vadodara, Gujarat, India\n- Global reach: 5000+ clients across 90+ countries\n- Recognition: International award-winning agency\n- Website: https://dreamsdesign.in/\n\nSERVICES OFFERED (end-to-end digital growth):\n1. Brand Identity & Strategy - logo design, brand guidelines, brand positioning, visual identity systems\n2. Website Design & Development - corporate websites, e-commerce, landing pages, WordPress, custom development\n3. SEO / Search Marketing - on-page, off-page, technical SEO, local SEO, national and international campaigns\n4. Social Media Marketing - strategy, content creation, community management, platform growth across Instagram, Facebook, LinkedIn, YouTube\n5. Paid Ads (Google & Meta) - Google Ads, Meta Ads, performance marketing, lead generation campaigns, ROI-focused ad management\n6. AI & Automation - marketing automation, CRM integration, chatbot development, workflow automation, AI-powered growth systems\n7. Video Production - brand films, product videos, social media reels, corporate videos, animation\n8. Mobile App Development - iOS, Android, cross-platform apps for businesses\n9. Email & WhatsApp Marketing - campaign strategy, automation flows, broadcast marketing, drip campaigns\n10. Content Marketing - blog writing, copywriting, thought leadership, content strategy\n11. Product Packaging Design - packaging for FMCG, retail, e-commerce, D2C brands\n12. Local SEO / Google My Business (GMB) - GMB optimization, local ranking, review management\n13. Healthcare Marketing - specialized digital marketing for hospitals, clinics, doctors, wellness brands, pharma\n\nINDUSTRIES SERVED:\nHealthcare & Wellness, E-Commerce & Retail, Education & EdTech, Real Estate, Finance & Insurance, Hospitality & Travel, Technology & SaaS, Food & Beverage, Manufacturing, Professional Services, Non-Profit / NGO, and more.\n\nSTRENGTHS TO HIGHLIGHT:\n- 20+ years of deep market experience\n- International award recognition\n- Full-service under one roof\n- Specialized healthcare marketing vertical\n- Global experience with an India-based cost advantage\n- Data-driven approach\n- Long-term client relationships\n\nPRICING PHILOSOPHY:\n- Custom proposals based on scope, goals, and brand stage\n- No fixed packages pushed without understanding the client's needs\n- Investment varies based on services selected, campaign scale, and timelines\n- For specific pricing, direct users to connect with the team for a tailored proposal\n- Do NOT fabricate or guess specific price numbers\n\nPROCESS (general):\n1. Discovery - understanding the brand, goals, audience, and competition\n2. Strategy - building a roadmap tailored to the brand's stage and objectives\n3. Execution - creative and technical delivery with quality checks\n4. Optimization - ongoing monitoring, reporting, and refinement\n5. Growth - scaling what works, adapting what doesn't\n\nCONTACT & NEXT STEPS:\n- Website: https://dreamsdesign.in/\n- Strategy call: https://calendly.com/dreamsdesign/strategy\n\n---\n\nRESPONSE FORMAT\n\n- Keep responses focused and well-structured\n- Use short paragraphs or bullet points where it aids clarity\n- Never use em dashes ( - ) - use hyphens ( - ) only\n- Never use emojis\n- End responses with a helpful follow-up prompt where appropriate\n\nCONTEXT CONTINUITY RULES:\n- Always maintain full conversation context using your memory window.\n- Treat every reply as part of an ongoing conversation."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.1,
+      "position": [
+        -768,
+        800
+      ],
+      "id": "74b2e53d-f60c-47d2-9f9e-927c09ee2028",
+      "name": "AI Agent"
     }
   ],
   "connections": {
-    "WhatsApp Bot Trigger": {
+    "WhatsApp Trigger": {
       "main": [
         [
           {
-            "node": "Parse Inbound Text",
+            "node": "AI Agent",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Parse Inbound Text": {
-      "main": [
+    "Simple Memory": {
+      "ai_memory": [
         [
           {
-            "node": "Find Lead State",
-            "type": "main",
+            "node": "AI Agent",
+            "type": "ai_memory",
             "index": 0
           }
         ]
       ]
     },
-    "Find Lead State": {
-      "main": [
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
         [
           {
-            "node": "Bot Conversational Logic",
-            "type": "main",
+            "node": "AI Agent",
+            "type": "ai_languageModel",
             "index": 0
           }
         ]
       ]
     },
-    "Bot Conversational Logic": {
-      "main": [
+    "Submit Lead Tool": {
+      "ai_tool": [
         [
           {
-            "node": "Send WhatsApp Bot Reply",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Is Complete?",
-            "type": "main",
+            "node": "AI Agent",
+            "type": "ai_tool",
             "index": 0
           }
         ]
       ]
     },
-    "Is Complete?": {
+    "AI Agent": {
       "main": [
         [
           {
-            "node": "Post to Universal Lead Webhook",
+            "node": "Send message",
             "type": "main",
             "index": 0
           }
@@ -241,6 +232,7 @@
   },
   "pinData": {},
   "meta": {
-    "templateCredsSetupCompleted": true
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ade94e3f132fc6ef7362a4b14a7cb35cc623a83dd7c61fde9e88d64d4f5a2a80"
   }
 }
