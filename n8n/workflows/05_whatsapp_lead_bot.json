@@ -255,7 +255,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  direction: 'outbound',\n  phone: $('WhatsApp Trigger').item.json.messages[0].from.replace(/^\\+*/, '+'),\n  content: $('AI Agent - Existing Lead').item.json.output || $('AI Agent - New Lead Collector').item.json.output,\n  wa_message_id: $json.messages?.[0]?.id || null,\n  lead_id: $('Get a row').item.json.id || null\n}) }}",
+        "jsonBody": "={{ (() => { let text = ''; try { text = $('AI Agent - Existing Lead').item.json.output; } catch (e) {} if (!text) { try { text = $('AI Agent - New Lead Collector').item.json.output; } catch (e) {} } let leadId = null; try { leadId = $('Check Lead Exists').item.json.id; } catch (e) {} if (!leadId) { try { leadId = $('Get a row').item.json.id; } catch (e) {} } return JSON.stringify({ direction: 'outbound', phone: $('WhatsApp Trigger').item.json.messages[0].from.replace(/^\\+*/, '+'), content: text, wa_message_id: $json.messages?.[0]?.id || $('WhatsApp Trigger').item.json.messages[0].id, lead_id: leadId || null }); })() }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
