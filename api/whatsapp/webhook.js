@@ -56,6 +56,57 @@ export default async function handler(req, res) {
 
       const root = Array.isArray(rawBody) ? rawBody[0] : rawBody;
 
+      // Handle explicit outbound AI message forwarding from n8n
+      const isOutbound = root.direction === 'outbound' || root.type === 'outbound' || (root.content && (root.phone || root.recipientPhoneNumber));
+      if (isOutbound) {
+        const outboundPhone = String(root.phone || root.recipientPhoneNumber || root.to || '').trim();
+        const outboundContent = String(root.content || root.output || root.textBody || root.message || '').trim();
+        const outboundWaId = String(root.wa_message_id || root.messages?.[0]?.id || `out_${Date.now()}`);
+
+        if (outboundPhone && outboundContent) {
+          let cleanDigits = outboundPhone.replace(/\D/g, '');
+          if (cleanDigits.length > 10) cleanDigits = cleanDigits.slice(-10);
+
+          let leadId = root.lead_id || null;
+          if (!leadId && cleanDigits) {
+            try {
+              const { data: leadMatch } = await supabase
+                .from('leads')
+                .select('id')
+                .or(`phone.ilike.%${cleanDigits}%,whatsapp.ilike.%${cleanDigits}%`)
+                .limit(1);
+              if (leadMatch && leadMatch.length > 0) {
+                leadId = leadMatch[0].id;
+              }
+            } catch (lErr) {
+              console.warn('[WhatsApp Webhook] Lead lookup for outbound failed:', lErr.message);
+            }
+          }
+
+          if (leadId) {
+            try {
+              const { data: insertedMsg } = await supabase
+                .from('whatsapp_messages')
+                .insert({
+                  lead_id: leadId,
+                  phone: outboundPhone.startsWith('+') ? outboundPhone : `+${outboundPhone}`,
+                  direction: 'outbound',
+                  content: outboundContent,
+                  wa_message_id: outboundWaId,
+                  status: 'sent',
+                  sent_at: new Date().toISOString()
+                })
+                .select();
+
+              console.log('[WhatsApp Webhook] Outbound AI message logged successfully:', insertedMsg);
+              return res.status(200).json({ success: true, message: 'OUTBOUND_LOGGED', data: insertedMsg });
+            } catch (insErr) {
+              console.error('[WhatsApp Webhook] Error inserting outbound message:', insErr.message);
+            }
+          }
+        }
+      }
+
       // Drill into value object: root.entry[0].changes[0].value OR root.value OR root
       let value = null;
       if (root.entry && Array.isArray(root.entry) && root.entry[0]?.changes?.[0]?.value) {
