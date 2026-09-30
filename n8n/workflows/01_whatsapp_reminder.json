@@ -18,7 +18,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/leads?select=id,name,phone,email,company,status,appointment_booked,reminders_sent,last_reminder_at&status=in.(hot,warm,qualified)&appointment_booked=eq.false&reminders_sent=lt.3&order=created_at.asc&limit=50",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/leads?select=id,name,phone,email,branch,purpose,time_slot,message,status,appointment_booked,reminders_sent,last_reminder_at&status=in.(hot,warm,qualified)&appointment_booked=eq.false&reminders_sent=lt.3&order=created_at.asc&limit=50",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
