@@ -259,7 +259,7 @@
           },
           "conditions": [
             {
-              "leftValue": "={{ $json.candidates.toString()}}",
+              "leftValue": "={{ $json.choices?.[0]?.message?.content || $json.candidates?.[0]?.content?.parts?.[0]?.text }}",
               "rightValue": "",
               "operator": {
                 "type": "string",
