@@ -16,35 +16,35 @@ const TEMPLATES = [
     name: 'mansi_lead_demo_appointment_booking',
     label: 'Appointment Booking',
     language: 'en_IN',
-    params: (c) => [firstName(c), c.branch || c.company || 'Dreamsdesign'],
-    preview: (c) => `Welcome to Dreamsdesign
+    params: (c) => [firstName(c), c.branch || c.company || 'Aura Clinic'],
+    preview: (c) => `Welcome to Aura Clinic
 
 Hi ${firstName(c)}! 👋
-Thank you for reaching out to Dreamsdesign! ✅
-Your request for ${c.branch || c.company || 'Dreamsdesign'} has been received.
-Krishna Puranik, our Founder & MD, would love to connect with you personally.
+Thank you for reaching out to Aura Clinic! ✅
+Your request for ${c.branch || c.company || 'Aura Clinic'} has been received.
+Dr. Aditya Shah, our Lead Specialist & MD, would love to connect with you personally.
 
-🗓️ Book your free 30-minute call with Krishna directly:
+🗓️ Book your free 30-minute consultation with Dr. Aditya Shah directly:
 https://calendly.com/shahmansi1107/30min
 
 On the call we will:
-✔ Understand your business goals
+✔ Understand your specific health & treatment goals
 ✔ Show you exactly how we can help
-✔ Give you a clear growth roadmap
+✔ Give you a clear treatment roadmap
 
 No obligation. No sales pressure. Just honest advice from 25 years of experience.
 
 💬 Any questions before the call? Just reply here.
 
-Krishna Puranik
-Founder & MD, Dreamsdesign
+Dr. Aditya Shah
+Lead Specialist & MD, Aura Clinic
 🌐 dreamsdesign.in`,
   },
 ]
 
 const QUICK_REPLIES = [
   'Hi {{name}} 👋 Following up on your consultation call — do you have 5 minutes today?',
-  'Great to hear from you! Can I book your free 30-minute call with Krishna?',
+  'Great to hear from you! Can I book your free 30-minute consultation with Dr. Aditya Shah?',
   'Thanks for your message! Our team will get back to you shortly.',
 ]
 
