@@ -68,24 +68,53 @@ export default async function handler(req, res) {
           if (cleanDigits.length > 10) cleanDigits = cleanDigits.slice(-10);
 
           let leadId = root.lead_id || null;
-          if (!leadId && cleanDigits) {
+
+          // Multi-stage robust lead lookup if lead_id was missing or null
+          if (!leadId && outboundPhone) {
+            // Stage 1: Try RPC find_lead_by_contact
             try {
-              const { data: leadMatch } = await supabase
-                .from('leads')
-                .select('id')
-                .or(`phone.ilike.%${cleanDigits}%,whatsapp.ilike.%${cleanDigits}%`)
-                .limit(1);
-              if (leadMatch && leadMatch.length > 0) {
-                leadId = leadMatch[0].id;
+              const { data: rpcData } = await supabase.rpc('find_lead_by_contact', {
+                p_phone: outboundPhone.startsWith('+') ? outboundPhone : `+${outboundPhone}`
+              });
+              if (rpcData && rpcData.length > 0 && rpcData[0].lead_id) {
+                leadId = rpcData[0].lead_id;
               }
-            } catch (lErr) {
-              console.warn('[WhatsApp Webhook] Lead lookup for outbound failed:', lErr.message);
+            } catch (rErr) {}
+
+            // Stage 2: Direct query on leads table by clean 10-digit phone
+            if (!leadId && cleanDigits) {
+              try {
+                const { data: leadMatch } = await supabase
+                  .from('leads')
+                  .select('id')
+                  .or(`phone.ilike.%${cleanDigits}%,whatsapp.ilike.%${cleanDigits}%`)
+                  .order('created_at', { ascending: false })
+                  .limit(1);
+                if (leadMatch && leadMatch.length > 0) {
+                  leadId = leadMatch[0].id;
+                }
+              } catch (lErr) {}
+            }
+
+            // Stage 3: Look up lead_id from recent whatsapp_messages table for this phone
+            if (!leadId && cleanDigits) {
+              try {
+                const { data: msgMatch } = await supabase
+                  .from('whatsapp_messages')
+                  .select('lead_id')
+                  .ilike('phone', `%${cleanDigits}%`)
+                  .order('sent_at', { ascending: false })
+                  .limit(1);
+                if (msgMatch && msgMatch.length > 0 && msgMatch[0].lead_id) {
+                  leadId = msgMatch[0].lead_id;
+                }
+              } catch (mErr) {}
             }
           }
 
           if (leadId) {
             try {
-              const { data: insertedMsg } = await supabase
+              const { data: insertedMsg, error: insErr } = await supabase
                 .from('whatsapp_messages')
                 .insert({
                   lead_id: leadId,
@@ -98,11 +127,18 @@ export default async function handler(req, res) {
                 })
                 .select();
 
+              if (insErr) {
+                console.error('[WhatsApp Webhook] Error inserting outbound message:', insErr.message);
+                return res.status(500).json({ error: insErr.message });
+              }
+
               console.log('[WhatsApp Webhook] Outbound AI message logged successfully:', insertedMsg);
               return res.status(200).json({ success: true, message: 'OUTBOUND_LOGGED', data: insertedMsg });
             } catch (insErr) {
-              console.error('[WhatsApp Webhook] Error inserting outbound message:', insErr.message);
+              console.error('[WhatsApp Webhook] Exception inserting outbound message:', insErr.message);
             }
+          } else {
+            console.warn('[WhatsApp Webhook] Outbound message could not find matching lead_id for phone:', outboundPhone);
           }
         }
       }
