@@ -86,7 +86,7 @@ export async function fetchLeads() {
 
 export async function fetchLeadDetail(id) {
   const [lead, scores, outreach, followups] = await Promise.all([
-    supabase.from('leads').select('*').eq('id', id).single(),
+    supabase.from('leads').select('*').eq('id', id).maybeSingle(),
     supabase.from('lead_scores').select('*').eq('lead_id', id).maybeSingle(),
     supabase
       .from('outreach_log')
@@ -99,7 +99,7 @@ export async function fetchLeadDetail(id) {
       .eq('lead_id', id)
       .order('scheduled_at', { ascending: false }),
   ])
-  for (const r of [lead, scores, outreach, followups]) if (r.error) throw r.error
+  if (lead.error) throw lead.error
   return {
     lead: lead.data,
     score: scores.data,

@@ -8,7 +8,16 @@ import {
   scoreColor,
 } from '../lib/supabase'
 
-const BREAKDOWN_LABELS = { budget: 'Budget', authority: 'Authority', need: 'Need', timing: 'Timing' }
+const BREAKDOWN_LABELS = {
+  urgency: 'Urgency',
+  specificity: 'Specificity',
+  treatment_value: 'Treatment Value',
+  booking_readiness: 'Booking Readiness',
+  budget: 'Budget',
+  authority: 'Authority',
+  need: 'Need',
+  timing: 'Timing',
+}
 const CHANNEL_LABELS = { email: 'Email', whatsapp: 'WhatsApp', ai_call: 'AI Call' }
 
 export default function LeadDetail({ leadId, onClose, onOpenChat }) {

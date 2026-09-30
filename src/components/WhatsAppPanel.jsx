@@ -16,12 +16,12 @@ const TEMPLATES = [
     name: 'mansi_lead_demo_appointment_booking',
     label: 'Appointment Booking',
     language: 'en_IN',
-    params: (c) => [firstName(c), c.company || 'Dreamsdesign'],
+    params: (c) => [firstName(c), c.branch || c.company || 'Dreamsdesign'],
     preview: (c) => `Welcome to Dreamsdesign
 
 Hi ${firstName(c)}! 👋
 Thank you for reaching out to Dreamsdesign! ✅
-Your request for ${c.company || 'Dreamsdesign'} has been received.
+Your request for ${c.branch || c.company || 'Dreamsdesign'} has been received.
 Krishna Puranik, our Founder & MD, would love to connect with you personally.
 
 🗓️ Book your free 30-minute call with Krishna directly:
