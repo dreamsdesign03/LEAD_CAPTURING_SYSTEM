@@ -125,7 +125,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ name: $('Normalise Any Payload').item.json.name, email: $('Normalise Any Payload').item.json.email || null, phone: $('Normalise Any Payload').item.json.phone || null, source: $('Normalise Any Payload').item.json.source, branch: $('Normalise Any Payload').item.json.branch || null, purpose: $('Normalise Any Payload').item.json.purpose || null, time_slot: $('Normalise Any Payload').item.json.time_slot || null, message: $('Normalise Any Payload').item.json.message || null, raw_data: $('Normalise Any Payload').item.json.raw_data }) }}",
+        "jsonBody": "={{ { name: $('Normalise Any Payload').item.json.name, email: $('Normalise Any Payload').item.json.email || null, phone: $('Normalise Any Payload').item.json.phone || null, source: $('Normalise Any Payload').item.json.source, branch: $('Normalise Any Payload').item.json.branch || null, purpose: $('Normalise Any Payload').item.json.purpose || null, time_slot: $('Normalise Any Payload').item.json.time_slot || null, message: $('Normalise Any Payload').item.json.message || null, raw_data: $('Normalise Any Payload').item.json.raw_data } }}",
         "options": {}
       },
       "id": "50c3d7fe-b7cc-4d21-a807-ab8848639c7c",
