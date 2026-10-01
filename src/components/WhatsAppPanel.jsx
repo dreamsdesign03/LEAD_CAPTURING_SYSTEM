@@ -25,7 +25,7 @@ Your request for ${c.branch || c.company || 'Aura Clinic'} has been received.
 Dr. Aditya Shah, our Lead Specialist & MD, would love to connect with you personally.
 
 🗓️ Book your free 30-minute consultation with Dr. Aditya Shah directly:
-https://calendly.com/shahmansi1107/30min
+https://calendly.com/shahmansi1107/aura-appointment
 
 On the call we will:
 ✔ Understand your specific health & treatment goals
