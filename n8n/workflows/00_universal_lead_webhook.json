@@ -431,7 +431,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"recipient_type\": \"individual\",\n  \"to\": \"{{ $('Universal Lead Webhook').item.json.body.phone }}\",\n  \"type\": \"template\",\n  \"template\": {\n    \"name\": \"aura_lead_appointment_booking\",\n    \"language\": {\n      \"code\": \"en_IN\"\n    },\n    \"components\": [\n      {\n        \"type\": \"body\",\n        \"parameters\": [\n          { \"type\": \"text\", \"text\": \"{{ $('Universal Lead Webhook').item.json.body.name || 'there' }}\" },\n          { \"type\": \"text\", \"text\": \"{{ $('Universal Lead Webhook').item.json.body.purpose || $('Universal Lead Webhook').item.json.body.branch || 'Aura Consultation' }}\" }\n        ]\n      }\n    ]\n  }\n}",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"recipient_type\": \"individual\",\n  \"to\": \"{{ $('Universal Lead Webhook').item.json.body.phone }}\",\n  \"type\": \"template\",\n  \"template\": {\n    \"name\": \"aura_lead_appointment_booking\",\n    \"language\": {\n      \"code\": \"en_IN\"\n    },\n    \"components\": [\n      {\n        \"type\": \"body\",\n        \"parameters\": [\n          { \"type\": \"text\", \"text\": \"{{ $('Universal Lead Webhook').item.json.body.name || 'there' }}\" },\n          { \"type\": \"text\", \"text\": \"{{ $('Universal Lead Webhook').item.json.body.purpose || 'Skin & Hair Consultation' }}\" },\n          { \"type\": \"text\", \"text\": \"{{ $('Universal Lead Webhook').item.json.body.branch || 'Alkapuri' }}\" }\n        ]\n      }\n    ]\n  }\n}",
         "options": {
           "response": {
             "response": {}

@@ -16,12 +16,12 @@ const TEMPLATES = [
     name: 'aura_lead_appointment_booking',
     label: 'Aura Appointment Booking',
     language: 'en_IN',
-    params: (c) => [firstName(c), c.purpose || c.branch || 'Aura Consultation'],
+    params: (c) => [firstName(c), c.purpose || 'Skin & Hair Consultation', c.branch || 'Alkapuri'],
     preview: (c) => `Welcome to Aura Laser & Cosmetic Clinic
 
 Hi ${firstName(c)}!
 Thank you for reaching out to Aura Clinic!
-Your request for ${c.purpose || c.branch || 'Aura Consultation'} has been received.
+Your request for ${c.purpose || 'Skin & Hair Consultation'} at ${c.branch || 'Alkapuri'} has been received.
 Dr. Aditya Shah's team would love to help you get started.
 
 🗓️ Book your consultation slot here:
@@ -225,8 +225,8 @@ export default function WhatsAppPanel({ preselectedLeadId }) {
       if (isTemplate) {
         payload.templateName = template.name
         payload.templateLanguage = template.language || 'en_IN'
-        payload.templateParams = template.params({ name: activeLead.name, company: activeLead.company })
-        messageContent = template.preview ? template.preview({ name: activeLead.name, company: activeLead.company }) : `[Template: ${template.name}]`
+        payload.templateParams = template.params(activeLead)
+        messageContent = template.preview ? template.preview(activeLead) : `[Template: ${template.name}]`
         payload.message = messageContent
       } else {
         payload.message = text
