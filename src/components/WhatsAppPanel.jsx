@@ -13,32 +13,33 @@ const WA_CANVAS = '#F0F4F0'
 const BIZ_NUMBER = import.meta.env.VITE_WHATSAPP_BIZ_NUMBER || ''
 const TEMPLATES = [
   {
-    name: 'mansi_lead_demo_appointment_booking',
-    label: 'Appointment Booking',
+    name: 'aura_lead_appointment_booking',
+    label: 'Aura Appointment Booking',
     language: 'en_IN',
-    params: (c) => [firstName(c), c.branch || c.company || 'Aura Clinic'],
-    preview: (c) => `Welcome to Aura Clinic
+    params: (c) => [firstName(c), c.purpose || c.branch || 'Aura Consultation'],
+    preview: (c) => `Welcome to Aura Laser & Cosmetic Clinic
 
-Hi ${firstName(c)}! 👋
-Thank you for reaching out to Aura Clinic! ✅
-Your request for ${c.branch || c.company || 'Aura Clinic'} has been received.
-Dr. Aditya Shah, our Lead Specialist & MD, would love to connect with you personally.
+Hi ${firstName(c)}!
+Thank you for reaching out to Aura Clinic!
+Your request for ${c.purpose || c.branch || 'Aura Consultation'} has been received.
+Dr. Aditya Shah's team would love to help you get started.
 
-🗓️ Book your free 30-minute consultation with Dr. Aditya Shah directly:
+🗓️ Book your consultation slot here:
 https://calendly.com/shahmansi1107/aura-appointment
 
-On the call we will:
-✔ Understand your specific health & treatment goals
-✔ Show you exactly how we can help
-✔ Give you a clear treatment roadmap
+On your visit we will:
+✔ Understand your skin/hair concern
+✔ Recommend the right treatment plan
+✔ Answer all your questions
 
-No obligation. No sales pressure. Just honest advice from 25 years of experience.
+No obligation. Just honest advice from a dermatologist with 12+ years of experience.
 
-💬 Any questions before the call? Just reply here.
+💬 Any questions before your visit? Just reply here.
 
-Dr. Aditya Shah
-Lead Specialist & MD, Aura Clinic
-🌐 dreamsdesign.in`,
+Aura Laser & Cosmetic Clinic
+📍 Alkapuri
+🌐 auralaserclinic.com
+📞 +91 8048039290`,
   },
 ]
 
