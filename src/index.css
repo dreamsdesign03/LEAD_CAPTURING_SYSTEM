@@ -1,22 +1,23 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Outfit:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 :root {
   --primary-pink: #CB3273;
   --primary-pink-hover: #A4285E;
-  --pink-light: #FBE9F1;
-  --pink-border: #F7D6E4;
-  --bg-rose: #FDF3F8;
+  --pink-light: #FDF2F7;
+  --border-subtle: #E2E8F0;
+  --bg-app: #F8FAFC;
 }
 
 body {
-  font-family: 'Inter', sans-serif;
-  background-color: var(--bg-rose);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: var(--bg-app);
   color: #0f172a;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Scrollbar styling matching Aura AI */
+/* Custom scrollbars - subtle slate/pink */
 ::-webkit-scrollbar {
   width: 5px;
   height: 5px;
@@ -25,23 +26,28 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #FBCFE8;
+  background: #cbd5e1;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #F9A8D4;
+  background: #94a3b8;
 }
 
-/* Custom styles for WhatsApp background wallpaper pattern */
+/* WhatsApp wallpaper background pattern */
 .wa-wallpaper-bg {
   background-color: #efeae2;
   background-image: radial-gradient(#d1c7bd 0.75px, transparent 0.75px), radial-gradient(#d1c7bd 0.75px, #efeae2 0.75px);
-  background-size: 30px 30px;
-  background-position: 0 0, 15px 15px;
+  background-size: 28px 28px;
+  background-position: 0 0, 14px 14px;
 }
 
-.gradient-text-aura {
-  background: linear-gradient(135deg, #CB3273 0%, #DE377C 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+.font-outfit {
+  font-family: 'Outfit', sans-serif;
+}
+
+/* High contrast glassmorphic header */
+.glass-header {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
