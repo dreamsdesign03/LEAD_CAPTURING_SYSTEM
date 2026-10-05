@@ -1,5 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
+  ExternalLink,
+  MessageSquare,
+  RefreshCw,
+  Search,
+  Send,
+  CheckCheck,
+  Sparkles,
+  User,
+  Building2,
+  PhoneCall
+} from 'lucide-react'
+import {
   fetchLeadById,
   fetchWhatsAppChat,
   fetchWhatsAppConversations,
@@ -8,9 +20,9 @@ import {
   supabase,
 } from '../lib/supabase'
 
-const WA_GREEN = '#25D366'
-const WA_CANVAS = '#F0F4F0'
+const AURA_PINK = '#CB3273'
 const BIZ_NUMBER = import.meta.env.VITE_WHATSAPP_BIZ_NUMBER || ''
+
 const TEMPLATES = [
   {
     name: 'aura_lead_appointment_booking',
@@ -81,15 +93,7 @@ function bubbleTime(iso) {
   return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-function WhatsAppIcon({ className = 'w-4 h-4' }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-      <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38c1.45.79 3.08 1.21 4.79 1.21 5.46 0 9.91-4.45 9.91-9.91C21.95 6.45 17.5 2 12.04 2zm5.83 14.12c-.25.7-1.45 1.33-2.04 1.42-.52.08-1.18.11-1.9-.12-.44-.14-1-.32-1.71-.63-3.02-1.3-5-4.34-5.15-4.54-.15-.2-1.24-1.65-1.24-3.14 0-1.5.79-2.24 1.07-2.54.28-.31.61-.39.81-.39h.58c.19 0 .44-.07.69.52.25.6.85 2.08.92 2.23.08.15.13.33.03.53-.1.2-.15.32-.3.5-.15.17-.31.39-.45.52-.15.14-.3.29-.13.57.17.28.76 1.25 1.63 2.03 1.12 1 2.06 1.31 2.35 1.46.29.15.46.13.63-.08.17-.2.72-.84.92-1.13.19-.29.39-.24.65-.15.27.1 1.7.8 1.99.95.29.15.48.22.55.34.07.12.07.7-.18 1.4z" />
-    </svg>
-  )
-}
-
-export default function WhatsAppPanel({ preselectedLeadId }) {
+export default function WhatsAppPanel({ preselectedLeadId, onOpenLeadDetail }) {
   const [convs, setConvs] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -98,6 +102,7 @@ export default function WhatsAppPanel({ preselectedLeadId }) {
   const [messages, setMessages] = useState([])
   const [sending, setSending] = useState(false)
   const [waText, setWaText] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
   const threadRef = useRef(null)
   const handledPreselect = useRef(null)
 
@@ -168,36 +173,22 @@ export default function WhatsAppPanel({ preselectedLeadId }) {
   useEffect(() => {
     const channel = supabase
       .channel('wa-panel-live')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'leads' },
-        () => {
-          refreshConvs()
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, () => refreshConvs())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'whatsapp_messages' }, (payload) => {
+        refreshConvs()
+        const affectedId = payload.new?.lead_id || payload.old?.lead_id
+        if (selectedId && (!affectedId || affectedId === selectedId)) {
+          refreshChat(selectedId)
+          markWhatsAppThreadRead(selectedId).catch(() => {})
         }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'whatsapp_messages' },
-        (payload) => {
-          refreshConvs()
-          const affectedId = payload.new?.lead_id || payload.old?.lead_id
-          if (selectedId && (!affectedId || affectedId === selectedId)) {
-            refreshChat(selectedId)
-            markWhatsAppThreadRead(selectedId).catch(() => {})
-          }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'outreach_log' }, (payload) => {
+        refreshConvs()
+        const affectedId = payload.new?.lead_id || payload.old?.lead_id
+        if (selectedId && (!affectedId || affectedId === selectedId)) {
+          refreshChat(selectedId)
         }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'outreach_log' },
-        (payload) => {
-          refreshConvs()
-          const affectedId = payload.new?.lead_id || payload.old?.lead_id
-          if (selectedId && (!affectedId || affectedId === selectedId)) {
-            refreshChat(selectedId)
-          }
-        }
-      )
+      })
       .subscribe()
     return () => {
       supabase.removeChannel(channel)
@@ -211,6 +202,17 @@ export default function WhatsAppPanel({ preselectedLeadId }) {
   const selectedConv = convs.find((c) => c.lead_id === selectedId)
   const activeLead = selectedConv || leadStub
   const activePhone = String(activeLead?.phone || '').replace(/[^\d+]/g, '')
+
+  const filteredConvs = convs.filter((c) => {
+    if (!searchQuery.trim()) return true
+    const q = searchQuery.toLowerCase()
+    return (
+      (c.name && c.name.toLowerCase().includes(q)) ||
+      (c.phone && c.phone.includes(q)) ||
+      (c.company && c.company.toLowerCase().includes(q)) ||
+      (c.last_message && c.last_message.toLowerCase().includes(q))
+    )
+  })
 
   async function handleSend(e, template = null) {
     e?.preventDefault()
@@ -253,66 +255,89 @@ export default function WhatsAppPanel({ preselectedLeadId }) {
   }
 
   return (
-    <div id="whatsapp-panel" className="rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-        <div className="flex items-center gap-2">
-          <span
-            className="flex h-8 w-8 items-center justify-center rounded-full text-white"
-            style={{ background: WA_GREEN }}
-          >
-            <WhatsAppIcon className="h-4.5 w-4.5" />
-          </span>
+    <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-pink-100 bg-white shadow-xl shadow-pink-500/5">
+      {/* Top Section Header */}
+      <div className="flex items-center justify-between border-b border-pink-100 bg-white px-5 py-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-pink-500 to-[#CB3273] text-white shadow-md shadow-pink-500/20">
+            <MessageSquare className="h-5 w-5" />
+          </div>
           <div>
-            <h3 className="text-sm font-semibold text-slate-800">WhatsApp Inbox</h3>
-            <p className="text-[11px] text-slate-400">
-              {BIZ_NUMBER ? `Business number +${BIZ_NUMBER}` : 'Live inbox'}
+            <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+              WhatsApp Inbox
+              <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 border border-emerald-200">
+                ● Live API
+              </span>
+            </h2>
+            <p className="text-[11px] text-slate-500">
+              {BIZ_NUMBER ? `Connected: +${BIZ_NUMBER}` : 'Aura WhatsApp Business Suite'}
             </p>
           </div>
         </div>
-        <button
-          onClick={refreshConvs}
-          className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-100"
-        >
-          Refresh
-        </button>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={refreshConvs}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900 transition-all"
+          >
+            <RefreshCw className="h-3.5 w-3.5 text-slate-500" />
+            Sync Messages
+          </button>
+        </div>
       </div>
 
       {error && (
-        <div className="border-b border-rose-200 bg-rose-50 px-4 py-2 text-xs text-rose-700">
+        <div className="border-b border-rose-200 bg-rose-50 px-4 py-2 text-xs font-medium text-rose-700">
           {error}
         </div>
       )}
 
-      <div className="flex h-[560px] min-h-0">
-        {/* Conversation list */}
-        <div className="flex w-72 shrink-0 flex-col border-r border-slate-200">
+      {/* Main Workspace: Left Sidebar + Right Chat Container */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        {/* Left Conversations List */}
+        <div className="flex w-80 shrink-0 flex-col border-r border-slate-200 bg-slate-50/50">
+          {/* Search bar */}
+          <div className="p-3 border-b border-slate-200 bg-white">
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search conversations..."
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-8 pr-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 outline-none focus:border-pink-300 focus:bg-white focus:ring-2 focus:ring-pink-100 transition-all"
+              />
+            </div>
+          </div>
+
+          {/* Conversations scroll area */}
           <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
             {loading ? (
-              <p className="p-4 text-xs text-slate-400">Loading conversations…</p>
-            ) : convs.length === 0 ? (
-              <div className="p-4 text-xs text-slate-400">
-                No WhatsApp conversations yet. Inbound messages or sent templates will show up here.
+              <div className="p-6 text-center text-xs text-slate-400">Loading inbox conversations...</div>
+            ) : filteredConvs.length === 0 ? (
+              <div className="p-6 text-center text-xs text-slate-400">
+                {searchQuery ? 'No matching conversations' : 'No WhatsApp messages found.'}
               </div>
             ) : (
-              convs.map((conv) => {
+              filteredConvs.map((conv) => {
                 const isSelected = conv.lead_id === selectedId
                 const hasUnread = Number(conv.unread_count || 0) > 0
                 return (
                   <button
                     key={conv.lead_id}
                     onClick={() => selectLead(conv.lead_id)}
-                    className={`flex w-full gap-2.5 px-3 py-3 text-left transition-colors ${
+                    className={`flex w-full items-start gap-3 px-3.5 py-3 text-left transition-all ${
                       isSelected
-                        ? 'border-l-4 border-l-emerald-500 bg-emerald-50'
+                        ? 'border-l-4 border-l-[#CB3273] bg-[#FBE9F1]/60 shadow-xs'
                         : hasUnread
-                        ? 'border-l-4 border-l-transparent bg-emerald-50/40'
-                        : 'border-l-4 border-l-transparent hover:bg-slate-50'
+                        ? 'border-l-4 border-l-emerald-500 bg-emerald-50/40 hover:bg-emerald-50/70'
+                        : 'border-l-4 border-l-transparent hover:bg-slate-100/70'
                     }`}
                   >
                     <div className="relative flex-shrink-0">
                       <div
-                        className="flex h-9 w-9 items-center justify-center rounded-full text-[11px] font-bold text-white"
-                        style={{ background: '#CB3273' }}
+                        className="flex h-10 w-10 items-center justify-center rounded-full text-xs font-bold text-white shadow-sm"
+                        style={{ background: AURA_PINK }}
                       >
                         {initials(conv.name)}
                       </div>
@@ -320,27 +345,31 @@ export default function WhatsAppPanel({ preselectedLeadId }) {
                         <span className="absolute -right-0.5 -top-0.5 h-3 w-3 animate-pulse rounded-full border-2 border-white bg-emerald-500" />
                       )}
                     </div>
+
                     <div className="min-w-0 flex-1">
-                      <div className="mb-0.5 flex items-center justify-between">
+                      <div className="flex items-center justify-between mb-0.5">
                         <span
-                          className={`truncate text-xs ${hasUnread ? 'font-bold text-slate-900' : 'font-semibold text-slate-800'}`}
+                          className={`truncate text-xs ${
+                            isSelected || hasUnread ? 'font-bold text-slate-900' : 'font-semibold text-slate-800'
+                          }`}
                         >
                           {conv.name}
                         </span>
-                        <span
-                          className={`ml-1 flex-shrink-0 text-[10px] ${hasUnread ? 'font-bold text-emerald-600' : 'text-slate-400'}`}
-                        >
+                        <span className="ml-1 shrink-0 text-[10px] text-slate-400">
                           {timeAgo(conv.last_activity)}
                         </span>
                       </div>
+
                       <div className="flex items-center justify-between gap-1">
-                        <span
-                          className={`flex-1 truncate text-[11px] ${hasUnread ? 'font-bold text-slate-900' : 'text-slate-500'}`}
+                        <p
+                          className={`truncate text-[11px] leading-tight ${
+                            hasUnread ? 'font-semibold text-slate-900' : 'text-slate-500'
+                          }`}
                         >
-                          {conv.last_message || (conv.company ? conv.company : 'No messages yet')}
-                        </span>
+                          {conv.last_message || (conv.company ? conv.company : 'WhatsApp conversation')}
+                        </p>
                         {hasUnread && (
-                          <span className="flex h-[18px] min-w-[18px] flex-shrink-0 items-center justify-center rounded-full bg-emerald-500 px-1.5 text-[10px] font-bold text-white shadow-sm">
+                          <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-bold text-white shadow-xs">
                             {conv.unread_count}
                           </span>
                         )}
@@ -353,66 +382,115 @@ export default function WhatsAppPanel({ preselectedLeadId }) {
           </div>
         </div>
 
-        {/* Thread */}
-        <div className="flex min-w-0 flex-1 flex-col">
+        {/* Right Active Chat Pane */}
+        <div className="flex min-w-0 flex-1 flex-col bg-white">
           {activeLead ? (
             <>
-              <div className="flex items-center gap-2 border-b border-slate-200 px-4 py-2.5">
-                <div
-                  className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
-                  style={{ background: '#CB3273' }}
-                >
-                  {initials(activeLead.name)}
+              {/* Chat Header Matching Provided Screenshot EXACTLY */}
+              <div className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-3 shadow-2xs">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white shadow-sm"
+                    style={{ background: AURA_PINK }}
+                  >
+                    {initials(activeLead.name)}
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="truncate text-sm font-bold text-slate-900 leading-tight">
+                      {activeLead.name}
+                    </h3>
+                    <p className="truncate text-xs text-slate-500 flex items-center gap-2 mt-0.5">
+                      <span>{activeLead.company || 'dreamsdesign'}</span>
+                      <span className="text-slate-300">•</span>
+                      <span>{activePhone || 'No phone number'}</span>
+                    </p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold text-slate-800">{activeLead.name}</div>
-                  <div className="truncate text-[11px] text-slate-400">{activePhone || 'No phone on file'}</div>
-                </div>
-                {activeLead.lead_status && (
-                  <span className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium capitalize text-slate-600">
-                    {activeLead.lead_status}
+
+                <div className="flex items-center gap-3 shrink-0">
+                  {/* Status Tag Pill */}
+                  <span className="rounded-full bg-slate-100 border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600">
+                    {activeLead.lead_status || activeLead.status || 'outbound_sent'}
                   </span>
-                )}
+
+                  {/* View Lead Button */}
+                  {onOpenLeadDetail && (
+                    <button
+                      onClick={() => onOpenLeadDetail(activeLead.lead_id || activeLead.id)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-slate-900 transition-all"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+                      View Lead
+                    </button>
+                  )}
+
+                  {/* Refresh Button */}
+                  <button
+                    onClick={() => refreshChat(activeLead.lead_id || activeLead.id)}
+                    title="Refresh Chat"
+                    className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
 
+              {/* Chat Canvas (Messages List) */}
               <div
                 ref={threadRef}
-                className="flex-1 space-y-2 overflow-y-auto px-4 py-4"
-                style={{ background: WA_CANVAS }}
+                className="flex-1 space-y-3 overflow-y-auto p-5 wa-wallpaper-bg"
               >
                 {messages.length === 0 ? (
-                  <div className="flex h-full items-center justify-center text-xs text-slate-400">
-                    No messages yet — send the first WhatsApp message to start the conversation.
+                  <div className="flex h-full flex-col items-center justify-center p-8 text-center">
+                    <div className="rounded-full bg-white/80 p-4 shadow-sm">
+                      <MessageSquare className="h-8 w-8 text-slate-400" />
+                    </div>
+                    <p className="mt-3 text-xs font-medium text-slate-600">
+                      No messages in thread yet.
+                    </p>
+                    <p className="text-[11px] text-slate-400">
+                      Send a WhatsApp message or select an approved template below.
+                    </p>
                   </div>
                 ) : (
                   messages.map((msg) => {
                     const isOut = msg.direction === 'outbound'
                     return (
-                      <div key={msg.key || msg.id} className={`flex ${isOut ? 'justify-end' : 'justify-start'}`}>
+                      <div
+                        key={msg.key || msg.id}
+                        className={`flex ${isOut ? 'justify-end' : 'justify-start'}`}
+                      >
                         <div
-                          className="max-w-[78%] rounded-2xl px-3.5 py-2.5 shadow-sm"
-                          style={{
-                            background: isOut ? WA_GREEN : '#ffffff',
-                            color: isOut ? '#ffffff' : '#111827',
-                            borderBottomRightRadius: isOut ? 4 : 16,
-                            borderBottomLeftRadius: isOut ? 16 : 4,
-                          }}
+                          className={`relative max-w-[75%] rounded-2xl px-4 py-3 shadow-xs ${
+                            isOut
+                              ? 'rounded-tr-xs bg-[#dcf8c6] text-slate-900'
+                              : 'rounded-tl-xs bg-white border border-slate-200/80 text-slate-900'
+                          }`}
                         >
                           {msg.template && (
-                            <div
-                              className={`mb-1 text-[10px] font-bold uppercase tracking-wide ${isOut ? 'text-white/80' : 'text-indigo-600'}`}
-                            >
+                            <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-pink-700 flex items-center gap-1">
+                              <Sparkles className="h-3 w-3" />
                               Template: {msg.template}
                             </div>
                           )}
-                          <p className="whitespace-pre-wrap text-[13px] leading-snug">
+
+                          <p className="whitespace-pre-wrap text-[13px] leading-relaxed">
                             {msg.content || ''}
                           </p>
+
                           <div
-                            className={`mt-1 text-[10px] ${isOut ? 'text-right text-white/75' : 'text-left text-slate-400'}`}
+                            className={`mt-1.5 flex items-center justify-end gap-1 text-[11px] ${
+                              isOut ? 'text-slate-500' : 'text-slate-400'
+                            }`}
                           >
-                            {msg.status === 'failed' && <span className="mr-1 font-semibold text-rose-300">Failed · </span>}
-                            {bubbleTime(msg.sentAt)}
+                            {msg.status === 'failed' && (
+                              <span className="font-medium text-rose-600">Failed • </span>
+                            )}
+                            <span>{bubbleTime(msg.sentAt)}</span>
+
+                            {isOut && (
+                              <CheckCheck className="h-3.5 w-3.5 text-[#34b7f1]" />
+                            )}
                           </div>
                         </div>
                       </div>
@@ -421,14 +499,22 @@ export default function WhatsAppPanel({ preselectedLeadId }) {
                 )}
               </div>
 
+              {/* Bottom Message Composer Bar */}
               {!activePhone ? (
-                <div className="border-t border-slate-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">
-                  This lead has no phone number, so WhatsApp messages can't be sent yet.
+                <div className="border-t border-slate-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+                  This lead does not have a valid phone number associated for WhatsApp outreach.
                 </div>
               ) : (
-                <form onSubmit={handleSend} className="flex-shrink-0 space-y-2 border-t border-slate-200 bg-white p-3">
-                  <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/70 p-2">
-                    <span className="flex-shrink-0 text-[11px] font-bold text-emerald-900">⚡ Official Template:</span>
+                <form
+                  onSubmit={handleSend}
+                  className="shrink-0 space-y-2.5 border-t border-slate-200 bg-white p-3.5"
+                >
+                  {/* Template selector */}
+                  <div className="flex items-center gap-2 rounded-xl border border-pink-200 bg-pink-50/50 p-2">
+                    <span className="shrink-0 text-xs font-bold text-[#CB3273] flex items-center gap-1">
+                      <Sparkles className="h-3.5 w-3.5" />
+                      Approved Template:
+                    </span>
                     <select
                       defaultValue=""
                       onChange={(e) => {
@@ -438,10 +524,10 @@ export default function WhatsAppPanel({ preselectedLeadId }) {
                           e.target.value = ''
                         }
                       }}
-                      className="flex-1 rounded-lg border border-emerald-300 bg-white p-1.5 text-xs font-bold text-emerald-900 outline-none focus:ring-1 focus:ring-emerald-400"
+                      className="flex-1 rounded-lg border border-pink-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-pink-300"
                     >
                       <option value="" disabled>
-                        -- Select & Send Approved Template --
+                        -- Select & Send Aura WhatsApp Template --
                       </option>
                       {TEMPLATES.map((t) => (
                         <option key={t.name} value={t.name}>
@@ -451,7 +537,8 @@ export default function WhatsAppPanel({ preselectedLeadId }) {
                     </select>
                   </div>
 
-                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                  {/* Quick reply chips */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
                     {QUICK_REPLIES.map((r) => {
                       const txt = r.replaceAll('{{name}}', firstName(activeLead))
                       return (
@@ -459,36 +546,32 @@ export default function WhatsAppPanel({ preselectedLeadId }) {
                           key={r}
                           type="button"
                           onClick={() => setWaText(txt)}
-                          className="flex-shrink-0 whitespace-nowrap rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-[10px] font-semibold text-green-700 transition-colors hover:bg-green-100"
+                          className="shrink-0 rounded-full border border-pink-200 bg-pink-50/70 px-2.5 py-1 text-[11px] font-medium text-pink-700 transition-all hover:bg-pink-100"
                         >
-                          {txt.slice(0, 30)}…
+                          {txt.slice(0, 32)}…
                         </button>
                       )
                     })}
                   </div>
 
-                  <div className="flex items-center gap-1.5">
+                  {/* Input field and send button */}
+                  <div className="flex items-center gap-2">
                     <input
                       value={waText}
                       onChange={(e) => setWaText(e.target.value)}
-                      placeholder={`Send WhatsApp message to ${firstName(activeLead)}…`}
-                      className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-300"
+                      placeholder={`Write WhatsApp message to ${firstName(activeLead)}...`}
+                      className="flex-1 rounded-xl border border-slate-300 bg-slate-50 px-4 py-2 text-xs text-slate-800 placeholder-slate-400 outline-none focus:border-pink-400 focus:bg-white focus:ring-2 focus:ring-pink-100 transition-all"
                     />
                     <button
                       type="submit"
                       disabled={sending || !waText.trim()}
-                      className="flex flex-shrink-0 items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold text-white shadow-sm transition-all disabled:opacity-50"
-                      style={{ background: WA_GREEN }}
+                      className="inline-flex shrink-0 items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold text-white shadow-md transition-all disabled:opacity-50"
+                      style={{ background: AURA_PINK }}
                     >
                       {sending ? (
-                        <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-                        </svg>
+                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
                       ) : (
-                        <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5">
-                          <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-                        </svg>
+                        <Send className="h-3.5 w-3.5" />
                       )}
                       Send
                     </button>
@@ -497,8 +580,9 @@ export default function WhatsAppPanel({ preselectedLeadId }) {
               )}
             </>
           ) : (
-            <div className="flex flex-1 items-center justify-center bg-slate-50 text-sm text-slate-400">
-              Select a conversation to view and reply to WhatsApp messages.
+            <div className="flex flex-1 flex-col items-center justify-center p-8 text-slate-400">
+              <MessageSquare className="h-10 w-10 mb-2 opacity-50" />
+              <p className="text-sm font-medium">Select a conversation from the left to view messages.</p>
             </div>
           )}
         </div>

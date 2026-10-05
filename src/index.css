@@ -1,1 +1,47 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
 @import "tailwindcss";
+
+:root {
+  --primary-pink: #CB3273;
+  --primary-pink-hover: #A4285E;
+  --pink-light: #FBE9F1;
+  --pink-border: #F7D6E4;
+  --bg-rose: #FDF3F8;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-rose);
+  color: #0f172a;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar styling matching Aura AI */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #FBCFE8;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #F9A8D4;
+}
+
+/* Custom styles for WhatsApp background wallpaper pattern */
+.wa-wallpaper-bg {
+  background-color: #efeae2;
+  background-image: radial-gradient(#d1c7bd 0.75px, transparent 0.75px), radial-gradient(#d1c7bd 0.75px, #efeae2 0.75px);
+  background-size: 30px 30px;
+  background-position: 0 0, 15px 15px;
+}
+
+.gradient-text-aura {
+  background: linear-gradient(135deg, #CB3273 0%, #DE377C 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}

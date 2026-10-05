@@ -1,8 +1,11 @@
 import { useMemo, useState } from 'react'
+import { MessageSquare, Search, Eye, Filter, Sparkles, CheckCircle, Clock } from 'lucide-react'
 import { SOURCE_LABELS, STATUS_META, appointmentMeta, formatDate, scoreColor } from '../lib/supabase'
 
 const SOURCE_OPTIONS = ['', 'meta', 'linkedin', 'google_form', 'google_sheet', 'whatsapp', 'calling_agent', 'manual']
 const STATUS_OPTIONS = ['', 'new', 'hot', 'warm', 'cold', 'qualified', 'contacted', 'responded', 'converted', 'unqualified']
+
+const AURA_PINK = '#CB3273'
 
 export default function LeadsTable({ leads, onSelect, onOpenChat }) {
   const [search, setSearch] = useState('')
@@ -34,127 +37,164 @@ export default function LeadsTable({ leads, onSelect, onOpenChat }) {
   }, [leads, search, source, status, minScore])
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 p-4">
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search name, email, phone…"
-          className="w-64 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-        />
-        <select
-          value={source}
-          onChange={(e) => setSource(e.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none"
-        >
-          <option value="">All sources</option>
-          {SOURCE_OPTIONS.filter(Boolean).map((s) => (
-            <option key={s} value={s}>
-              {SOURCE_LABELS[s]}
-            </option>
-          ))}
-        </select>
-        <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none"
-        >
-          <option value="">All statuses</option>
-          {STATUS_OPTIONS.filter(Boolean).map((s) => (
-            <option key={s} value={s}>
-              {STATUS_META[s].label}
-            </option>
-          ))}
-        </select>
-        <input
-          value={minScore}
-          onChange={(e) => setMinScore(e.target.value.replace(/\D/g, ''))}
-          placeholder="Min score"
-          className="w-24 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-indigo-500"
-        />
-        <span className="ml-auto text-xs text-slate-400">{filtered.length} leads</span>
+    <div className="flex flex-col h-full overflow-hidden rounded-2xl border border-pink-100 bg-white shadow-xl shadow-pink-500/5">
+      {/* Top Filter Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-pink-100 bg-white p-4">
+        <div className="flex flex-wrap items-center gap-3 flex-1">
+          <div className="relative min-w-[240px]">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search name, email, phone…"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 outline-none focus:border-pink-400 focus:bg-white focus:ring-2 focus:ring-pink-100 transition-all"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Filter className="h-3.5 w-3.5 text-slate-400" />
+            <select
+              value={source}
+              onChange={(e) => setSource(e.target.value)}
+              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-700 outline-none focus:border-pink-400 focus:bg-white"
+            >
+              <option value="">All Sources</option>
+              {SOURCE_OPTIONS.filter(Boolean).map((s) => (
+                <option key={s} value={s}>
+                  {SOURCE_LABELS[s]}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-700 outline-none focus:border-pink-400 focus:bg-white"
+            >
+              <option value="">All Statuses</option>
+              {STATUS_OPTIONS.filter(Boolean).map((s) => (
+                <option key={s} value={s}>
+                  {STATUS_META[s]?.label || s}
+                </option>
+              ))}
+            </select>
+
+            <input
+              value={minScore}
+              onChange={(e) => setMinScore(e.target.value.replace(/\D/g, ''))}
+              placeholder="Min Score"
+              className="w-24 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-700 outline-none focus:border-pink-400 focus:bg-white"
+            />
+          </div>
+        </div>
+
+        <div className="text-xs font-semibold text-slate-500 bg-pink-50 px-3 py-1 rounded-full border border-pink-100">
+          Showing <span className="text-[#CB3273] font-bold">{filtered.length}</span> of {leads.length} leads
+        </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400">
-              <th className="px-4 py-2.5 font-medium">Name</th>
-              <th className="px-4 py-2.5 font-medium">Contact</th>
-              <th className="px-4 py-2.5 font-medium">Source</th>
-              <th className="px-4 py-2.5 font-medium">Score</th>
-              <th className="px-4 py-2.5 font-medium">Status</th>
-              <th className="px-4 py-2.5 font-medium">Appointment</th>
-              <th className="px-4 py-2.5 font-medium">Created</th>
-              <th className="px-4 py-2.5 font-medium">WhatsApp</th>
+      {/* Table Body Container */}
+      <div className="flex-1 overflow-auto">
+        <table className="w-full text-left text-xs">
+          <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
+            <tr>
+              <th className="px-4 py-3">Lead Name</th>
+              <th className="px-4 py-3">Contact Details</th>
+              <th className="px-4 py-3">Source</th>
+              <th className="px-4 py-3">AI Score</th>
+              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Appointment</th>
+              <th className="px-4 py-3">Created</th>
+              <th className="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-slate-100">
             {filtered.map((l) => (
               <tr
                 key={l.id}
                 onClick={() => onSelect(l.id)}
-                className="cursor-pointer border-b border-slate-100 transition-colors hover:bg-indigo-50/40"
+                className="group cursor-pointer hover:bg-pink-50/40 transition-colors"
               >
-                <td className="px-4 py-3 font-medium text-slate-800">{l.name}</td>
-                <td className="px-4 py-3 text-slate-500">
-                  <div>{l.email || '—'}</div>
-                  <div>{l.phone || ''}</div>
+                <td className="px-4 py-3 font-semibold text-slate-900 flex items-center gap-2">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-pink-100 text-[10px] font-bold text-[#CB3273]">
+                    {l.name ? l.name.charAt(0).toUpperCase() : 'L'}
+                  </div>
+                  <div>
+                    <div>{l.name}</div>
+                    {l.company && <div className="text-[10px] text-slate-400 font-normal">{l.company}</div>}
+                  </div>
                 </td>
+
+                <td className="px-4 py-3 text-slate-600">
+                  <div>{l.email || '—'}</div>
+                  <div className="text-slate-400">{l.phone || ''}</div>
+                </td>
+
                 <td className="px-4 py-3">
-                  <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                  <span className="inline-flex items-center rounded-md bg-slate-100 border border-slate-200 px-2 py-0.5 text-[11px] font-medium text-slate-600">
                     {SOURCE_LABELS[l.source] ?? l.source}
                   </span>
                 </td>
+
                 <td className="px-4 py-3">
                   {l.score != null ? (
                     <span
-                      className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${scoreColor(l.score)}`}
+                      className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold shadow-xs ${scoreColor(l.score)}`}
                     >
                       {l.score}
                     </span>
                   ) : (
-                    <span className="text-xs text-slate-400">…</span>
+                    <span className="text-[11px] text-slate-400">Pending</span>
                   )}
                 </td>
+
                 <td className="px-4 py-3">
                   <span
-                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_META[l.status]?.color ?? 'bg-slate-100 text-slate-600'}`}
+                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${STATUS_META[l.status]?.color ?? 'bg-slate-100 text-slate-600'}`}
                   >
                     {STATUS_META[l.status]?.label ?? l.status}
                   </span>
                 </td>
+
                 <td className="px-4 py-3">
                   <span
-                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${appointmentMeta(l.appointment_booked).color}`}
+                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${appointmentMeta(l.appointment_booked).color}`}
                   >
                     {appointmentMeta(l.appointment_booked).label}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-xs text-slate-400">
+
+                <td className="px-4 py-3 text-[11px] text-slate-400">
                   {formatDate(l.created_at)}
                 </td>
-                <td className="px-4 py-3">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onOpenChat?.(l.id)
-                    }}
-                    title="Open WhatsApp chat"
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-white transition-transform hover:scale-105"
-                    style={{ background: '#25D366' }}
-                  >
-                    <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
-                      <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38c1.45.79 3.08 1.21 4.79 1.21 5.46 0 9.91-4.45 9.91-9.91C21.95 6.45 17.5 2 12.04 2zm5.83 14.12c-.25.7-1.45 1.33-2.04 1.42-.52.08-1.18.11-1.9-.12-.44-.14-1-.32-1.71-.63-3.02-1.3-5-4.34-5.15-4.54-.15-.2-1.24-1.65-1.24-3.14 0-1.5.79-2.24 1.07-2.54.28-.31.61-.39.81-.39h.58c.19 0 .44-.07.69.52.25.6.85 2.08.92 2.23.08.15.13.33.03.53-.1.2-.15.32-.3.5-.15.17-.31.39-.45.52-.15.14-.3.29-.13.57.17.28.76 1.25 1.63 2.03 1.12 1 2.06 1.31 2.35 1.46.29.15.46.13.63-.08.17-.2.72-.84.92-1.13.19-.29.39-.24.65-.15.27.1 1.7.8 1.99.95.29.15.48.22.55.34.07.12.07.7-.18 1.4z" />
-                    </svg>
-                  </button>
+
+                <td className="px-4 py-3 text-right">
+                  <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => onSelect(l.id)}
+                      title="View Details"
+                      className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </button>
+
+                    <button
+                      onClick={() => onOpenChat?.(l.id)}
+                      title="Open WhatsApp Chat"
+                      className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-bold text-white shadow-xs transition-transform hover:scale-105"
+                      style={{ background: AURA_PINK }}
+                    >
+                      <MessageSquare className="h-3.5 w-3.5" />
+                      Chat
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-10 text-center text-slate-400">
-                  No leads match your filters.
+                <td colSpan={8} className="px-4 py-12 text-center text-slate-400">
+                  No leads match your active search filters.
                 </td>
               </tr>
             )}
