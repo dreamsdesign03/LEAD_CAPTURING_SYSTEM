@@ -60,9 +60,9 @@ export default function App() {
       {/* Top Header Navigation */}
       <header className="shrink-0 border-b border-pink-100 bg-white px-6 py-3 shadow-2xs">
         <div className="flex items-center justify-between">
-          {/* Logo Only (Text & Live sync badge removed per request) */}
-          <div className="flex items-center">
-            <img src={logoImg} alt="Aura AI Logo" className="h-10 w-auto object-contain cursor-pointer" />
+          {/* Logo Only */}
+          <div className="flex items-center py-0.5">
+            <img src={logoImg} alt="Aura AI Logo" className="h-12 sm:h-14 w-auto object-contain cursor-pointer transition-transform hover:scale-105" />
           </div>
 
           {/* Segmented Tab Navigation with light pink background hover effect */}
