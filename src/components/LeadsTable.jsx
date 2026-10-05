@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { MessageSquare, Search, Eye, Filter, Sparkles, CheckCircle, Clock } from 'lucide-react'
+import { MessageSquare, Search, Eye, Filter } from 'lucide-react'
 import { SOURCE_LABELS, STATUS_META, appointmentMeta, formatDate, scoreColor } from '../lib/supabase'
 
 const SOURCE_OPTIONS = ['', 'meta', 'linkedin', 'google_form', 'google_sheet', 'whatsapp', 'calling_agent', 'manual']
@@ -37,17 +37,17 @@ export default function LeadsTable({ leads, onSelect, onOpenChat }) {
   }, [leads, search, source, status, minScore])
 
   return (
-    <div className="flex flex-col h-full overflow-hidden rounded-2xl border border-pink-100 bg-white shadow-xl shadow-pink-500/5">
+    <div className="flex flex-col h-full overflow-hidden rounded-xl border border-pink-100 bg-white shadow-2xs">
       {/* Top Filter Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-pink-100 bg-white p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-pink-100 bg-white p-3.5">
         <div className="flex flex-wrap items-center gap-3 flex-1">
           <div className="relative min-w-[240px]">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search name, email, phone…"
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 outline-none focus:border-pink-400 focus:bg-white focus:ring-2 focus:ring-pink-100 transition-all"
+              className="w-full rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 outline-none focus:border-pink-300 focus:bg-white transition-all"
             />
           </div>
 
@@ -56,7 +56,7 @@ export default function LeadsTable({ leads, onSelect, onOpenChat }) {
             <select
               value={source}
               onChange={(e) => setSource(e.target.value)}
-              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-700 outline-none focus:border-pink-400 focus:bg-white"
+              className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-700 outline-none hover:bg-[#FBE9F1]/40 focus:border-pink-300 focus:bg-white transition-colors"
             >
               <option value="">All Sources</option>
               {SOURCE_OPTIONS.filter(Boolean).map((s) => (
@@ -69,7 +69,7 @@ export default function LeadsTable({ leads, onSelect, onOpenChat }) {
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-700 outline-none focus:border-pink-400 focus:bg-white"
+              className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-700 outline-none hover:bg-[#FBE9F1]/40 focus:border-pink-300 focus:bg-white transition-colors"
             >
               <option value="">All Statuses</option>
               {STATUS_OPTIONS.filter(Boolean).map((s) => (
@@ -83,7 +83,7 @@ export default function LeadsTable({ leads, onSelect, onOpenChat }) {
               value={minScore}
               onChange={(e) => setMinScore(e.target.value.replace(/\D/g, ''))}
               placeholder="Min Score"
-              className="w-24 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-700 outline-none focus:border-pink-400 focus:bg-white"
+              className="w-24 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-700 outline-none hover:bg-[#FBE9F1]/40 focus:border-pink-300 focus:bg-white transition-colors"
             />
           </div>
         </div>
@@ -113,7 +113,7 @@ export default function LeadsTable({ leads, onSelect, onOpenChat }) {
               <tr
                 key={l.id}
                 onClick={() => onSelect(l.id)}
-                className="group cursor-pointer hover:bg-pink-50/40 transition-colors"
+                className="group cursor-pointer hover:bg-[#FBE9F1]/60 transition-colors"
               >
                 <td className="px-4 py-3 font-semibold text-slate-900 flex items-center gap-2">
                   <div className="flex h-7 w-7 items-center justify-center rounded-full bg-pink-100 text-[10px] font-bold text-[#CB3273]">
@@ -173,7 +173,7 @@ export default function LeadsTable({ leads, onSelect, onOpenChat }) {
                     <button
                       onClick={() => onSelect(l.id)}
                       title="View Details"
-                      className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                      className="rounded-lg p-1.5 text-slate-400 hover:bg-[#FBE9F1] hover:text-[#CB3273] transition-colors"
                     >
                       <Eye className="h-4 w-4" />
                     </button>
@@ -181,7 +181,7 @@ export default function LeadsTable({ leads, onSelect, onOpenChat }) {
                     <button
                       onClick={() => onOpenChat?.(l.id)}
                       title="Open WhatsApp Chat"
-                      className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-bold text-white shadow-xs transition-transform hover:scale-105"
+                      className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-bold text-white shadow-xs hover:opacity-90 transition-transform hover:scale-105"
                       style={{ background: AURA_PINK }}
                     >
                       <MessageSquare className="h-3.5 w-3.5" />
